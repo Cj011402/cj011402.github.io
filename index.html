@@ -44,6 +44,9 @@
   .form { margin-top:14px; background:var(--card); padding:16px; border-radius:12px; display:grid; gap:10px; }
   .form input { padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:15px; }
   .form button { padding:12px; border:0; border-radius:8px; background:var(--enroll); color:#fff; font-size:16px; font-weight:600; cursor:pointer; }
+  .identity-form { margin-top:10px; }
+  .identity-form button[type="button"] { background:var(--card); color:var(--text); border:1px solid var(--border); }
+  #identityError { min-height:20px; color:var(--bad); text-align:center; font-size:14px; }
   .form button:disabled { opacity:.5; }
   #enrollMsg { font-size:14px; text-align:center; color:var(--muted); min-height:20px; }
   .back { border:0; background:var(--card); color:var(--text); padding:8px 12px; border-radius:8px; font-size:14px; cursor:pointer; }
@@ -89,17 +92,28 @@
   <button class="choice enroll" id="chooseEnroll"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></button>
   <div id="homeMsg">Loading…</div>
 </section>
+<div id="gps">GPS: waiting…</div>
 
 <main id="app" hidden>
-  <div class="cam">
+  <div class="cam" id="camPane">
     <video id="video" autoplay muted playsinline></video>
     <div id="prompt" hidden></div>
     <div id="badge">Starting…</div>
   </div>
 
   <section id="scanPane">
+    <form id="identityForm" class="form identity-form" hidden>
+      <label for="identityInput">Enter your employee ID before the face scan:</label>
+      <input id="identityInput" autocomplete="off" required aria-describedby="identityError">
+      <div id="identityError" aria-live="polite"></div>
+      <button id="identitySubmit" type="submit">Continue to face scan</button>
+    </form>
+    <div id="scanActions" class="form" hidden>
+      <div id="scanEmployee" aria-live="polite"></div>
+      <button type="button" id="retryScan">Retry face scan</button>
+      <button type="button" id="cancelScan">Cancel / enter another ID</button>
+    </div>
     <div id="result"><div style="color:var(--muted)">Look at the camera, then follow the on-screen instructions to record IN / OUT</div></div>
-    <div id="gps">GPS: waiting…</div>
   </section>
 
   <section id="enrollPane" hidden>
@@ -122,9 +136,10 @@ const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+const ENROLL_DUPLICATE_THRESHOLD = 0.4;
 
-let matcher = null, names = {}, cfg = { threshold: 0.5 };
-let mode = 'home', busy = false, pos = null, streak = { id: null, n: 0 };
+let enrollmentMatcher = null, names = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5 };
+let mode = 'home', busy = false, pos = null, activeScanId = null;
 
 // ====== SET THESE TWO ======
 const API_URL = 'https://script.google.com/macros/s/AKfycbwdfR3fnuDQpwsYbkpax_MW2oDCn8ypL5_wjkTreKf6X6fHjLHi1CmeoUyu8ZHhf2bF/exec'; // ends with /exec
@@ -213,23 +228,32 @@ async function openModule(m) {
   $('home').hidden = true; $('app').hidden = false; $('btnBack').hidden = false;
   $('scanPane').hidden = m !== 'scan';
   $('enrollPane').hidden = m !== 'enroll';
+  $('camPane').hidden = m === 'scan';
   $('result').innerHTML = '<div style="color:var(--muted)">Look at the camera, then follow the on-screen instructions to record IN / OUT</div>';
+  $('identityForm').hidden = m !== 'scan';
+  $('scanActions').hidden = true;
+  activeScanId = null;
+  $('identityInput').value = '';
+  $('identityError').textContent = '';
   $('enrollMsg').textContent = 'Face the camera, then press the button.';
-  say(''); streak = { id: null, n: 0 }; busy = false;
+  say(''); busy = false;
+  if (m === 'scan') {
+    badge('Enter employee ID to begin');
+    return;
+  }
   try {
     badge('Starting camera…');
     await startCamera();
     if (my !== session) { stopCamera(); return; }
-    if (m === 'scan') startGPS();
     badge('Ready');
-    if (m === 'scan') loop(my);
   } catch (e) {
     badge('Camera error: ' + (e.message || e), 'bad');
   }
 }
 function goHome() {
   session++; mode = 'home'; busy = false;
-  stopCamera(); stopGPS(); say('');
+  activeScanId = null;
+  stopCamera(); say('');
   $('app').hidden = true; $('home').hidden = false; $('btnBack').hidden = true;
 }
 $('chooseScan').onclick = () => openModule('scan');
@@ -239,7 +263,7 @@ $('btnBack').onclick = goHome;
 /* GPS */
 function startGPS() {
   if (!navigator.geolocation) { $('gps').textContent = 'GPS not supported'; return; }
-  stopGPS();
+  if (gpsWatch !== null) return;
   gpsWatch = navigator.geolocation.watchPosition(
     p => {
       pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
@@ -249,24 +273,22 @@ function startGPS() {
     { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
   );
 }
-function stopGPS() {
-  if (gpsWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatch);
-  gpsWatch = null;
-}
-
-/* Load employees + build matcher */
+/* Load employee names and face descriptors */
 async function loadEmployees() {
   const boot = await gs('getBootData');
   if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
   cfg = boot.config;
   names = {};
-  matcher = null;
+  enrollmentMatcher = null;
+  employeeDescriptors = new Map();
   if (boot.employees.length) {
     const labeled = boot.employees.map(e => {
       names[e.id] = e.name;
-      return new faceapi.LabeledFaceDescriptors(e.id, [Float32Array.from(e.descriptor)]);
+      const descriptor = Float32Array.from(e.descriptor);
+      employeeDescriptors.set(e.id, descriptor);
+      return new faceapi.LabeledFaceDescriptors(e.id, [descriptor]);
     });
-    matcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
+    enrollmentMatcher = new faceapi.FaceMatcher(labeled, ENROLL_DUPLICATE_THRESHOLD);
   }
 }
 
@@ -373,8 +395,9 @@ async function liveness(my) {
     }, 7000, my, fastOpts());
   };
   const tilt = async () => {
-    say('Tilt your head up or down');
-    const moved = await waitFor(m => Math.abs(m.pitch - pitch0) > 0.08, 7000, my);
+    const direction = Math.random() < 0.5 ? 'UP' : 'DOWN';
+    say('Tilt your head ' + direction.toLowerCase());
+    const moved = await waitFor(m => direction === 'UP' ? m.pitch < pitch0 - 0.08 : m.pitch > pitch0 + 0.08, 7000, my);
     if (!moved) return false;
     say('Now look straight again');
     return waitFor(m => Math.abs(m.pitch - pitch0) < 0.04, 5000, my);
@@ -405,6 +428,7 @@ function showResult(r) {
       title: 'Congratulations!',
       message: (r.type === 'IN' ? 'Time In' : 'Time Out') + ' recorded successfully for ' + r.name + ' at ' + r.time
     });
+    return true;
   } else {
     if (r.message && r.message.toLowerCase().includes('already')) {
       showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: r.message });
@@ -416,6 +440,7 @@ function showResult(r) {
     add('type ERR', r.message || 'Error');
     if (r.name) add('name', r.name);
     badge(r.cooldown ? 'Already scanned' : 'Not recorded', 'warn');
+    return false;
   }
 }
 
@@ -424,66 +449,133 @@ async function submit(id, dist, my) {
   try {
     const r = await gs('recordScan', id,
       pos ? pos.lat : null, pos ? pos.lng : null, pos ? pos.acc : null, dist);
-    if (my === session) showResult(r);
+    return my === session ? showResult(r) : false;
   } catch (e) {
     if (my === session) showResult({ ok: false, message: e.message || String(e) });
+    return false;
   }
-  await sleep(4000);
 }
 
-/* Scan: recognize -> liveness challenge -> re-verify same person -> record */
+/* Scan: employee ID lookup -> liveness challenge -> compare only with that employee's face -> record */
 async function verifyAndSubmit(id, my) {
-  busy = true;
-  try {
-    badge('Liveness check: ' + names[id]);
-    if (!await liveness(my)) {
-      say('');
-      if (my === session) showResult({ ok: false, message: 'Liveness check failed. Please try again in person.' });
-      await sleep(2500);
-      return;
-    }
-    // Make sure the same real person is still in front of the camera
-    const d = await faceapi.detectSingleFace($('video'), detOpts()).withFaceLandmarks().withFaceDescriptor();
-    const m = d && matcher.findBestMatch(d.descriptor);
-    if (!m || m.label !== id) {
-      if (my === session) showResult({ ok: false, message: 'Face changed during check. Try again.' });
-      await sleep(2500);
-      return;
-    }
-    await submit(id, m.distance, my);
-  } finally {
+  badge('Liveness check: ' + names[id]);
+  if (!await liveness(my)) {
     say('');
-    streak = { id: null, n: 0 };
+    if (my === session) showResult({ ok: false, message: 'Liveness check failed. Select Retry face scan to try again with this ID.' });
+    return false;
+  }
+  if (my !== session) return false;
+  const faces = await faceapi.detectAllFaces($('video'), detOpts()).withFaceLandmarks().withFaceDescriptors();
+  if (faces.length !== 1) {
+    if (my === session) showResult({ ok: false, message: 'Show only one face to the camera and try again with this ID.' });
+    return false;
+  }
+  const descriptor = employeeDescriptors.get(id);
+  const distance = descriptor && faceapi.euclideanDistance(faces[0].descriptor, descriptor);
+  if (distance === undefined || distance > cfg.threshold) {
+    if (my === session) showResult({ ok: false, message: 'Face does not match employee ID ' + id + '. No attendance was recorded.' });
+    return false;
+  }
+  return submit(id, distance, my);
+}
+
+async function runFaceScan(id, my) {
+  if (busy || mode !== 'scan' || id !== activeScanId) return;
+  busy = true;
+  $('retryScan').disabled = true;
+  $('cancelScan').disabled = true;
+  try {
+    $('camPane').hidden = false;
+    if (!stream) {
+      badge('Starting camera…');
+      await startCamera();
+    }
+    if (my !== session || id !== activeScanId) { stopCamera(); return; }
+    const recorded = await verifyAndSubmit(id, my);
+    if (my === session && id === activeScanId && recorded) {
+      stopCamera();
+      $('camPane').hidden = true;
+      $('scanActions').hidden = true;
+      $('identityForm').hidden = false;
+      $('identityInput').value = '';
+      $('identityError').textContent = '';
+      activeScanId = null;
+    }
+  } catch (e) {
+    if (my === session) {
+      showResult({ ok: false, message: 'Could not complete face scan: ' + (e.message || String(e)) });
+      stopCamera();
+      $('camPane').hidden = true;
+    }
+  } finally {
     busy = false;
+    if (my === session) {
+      $('retryScan').disabled = false;
+      $('cancelScan').disabled = false;
+    }
   }
 }
 
-async function loop(my) {
-  if (my !== session) return;
+$('identityForm').onsubmit = async event => {
+  event.preventDefault();
+  if (busy || mode !== 'scan') return;
+  const submittedId = $('identityInput').value.trim();
+  const my = session;
+  if (!submittedId) {
+    $('identityError').textContent = 'Enter your employee ID to continue.';
+    return;
+  }
+  busy = true;
+  $('identitySubmit').disabled = true;
+  $('identityError').textContent = '';
   try {
-    if (!busy) {
-      const d = await faceapi.detectSingleFace($('video'), detOpts()).withFaceLandmarks().withFaceDescriptor();
-      if (my !== session) return;
-      if (!d) {
-        badge('No face detected');
-        streak = { id: null, n: 0 };
-      } else if (!matcher) {
-        badge('No employees enrolled yet', 'warn');
-      } else {
-        const m = matcher.findBestMatch(d.descriptor);
-        if (m.label === 'unknown') {
-          badge('Face not recognized', 'warn');
-          streak = { id: null, n: 0 };
-        } else {
-          streak = streak.id === m.label ? { id: m.label, n: streak.n + 1 } : { id: m.label, n: 1 };
-          badge('Hold still… ' + names[m.label]);
-          if (streak.n >= 3) await verifyAndSubmit(m.label, my);
-        }
-      }
+    badge('Looking up employee ID…');
+    await loadEmployees();
+    if (my !== session) return;
+    const id = Object.keys(names).find(employeeId => employeeId.toLowerCase() === submittedId.toLowerCase());
+    if (!id) {
+      $('identityError').textContent = 'Employee ID not found. Check the ID and try again.';
+      badge('Enter a valid employee ID', 'warn');
+      return;
     }
-  } catch (e) { console.error(e); }
-  setTimeout(() => loop(my), 250);
-}
+    if (!employeeDescriptors.has(id)) {
+      $('identityError').textContent = 'No face record is available for this employee ID.';
+      badge('No face record found', 'warn');
+      return;
+    }
+    activeScanId = id;
+    $('scanEmployee').textContent = 'Scanning for ' + names[id] + ' (ID: ' + id + ')';
+    $('identityInput').value = '';
+    $('identityForm').hidden = true;
+    $('scanActions').hidden = false;
+    $('retryScan').hidden = false;
+  } catch (e) {
+    if (my === session) {
+      $('identityError').textContent = e.message || String(e);
+      badge('Could not look up employee ID', 'bad');
+    }
+  } finally {
+    busy = false;
+    $('identitySubmit').disabled = false;
+  }
+  if (my === session && activeScanId) await runFaceScan(activeScanId, my);
+};
+$('retryScan').onclick = () => {
+  if (activeScanId) runFaceScan(activeScanId, session);
+};
+$('cancelScan').onclick = () => {
+  if (busy) return;
+  activeScanId = null;
+  stopCamera();
+  $('camPane').hidden = true;
+  $('scanActions').hidden = true;
+  $('identityForm').hidden = false;
+  $('identityInput').value = '';
+  $('identityError').textContent = '';
+  $('result').innerHTML = '<div style="color:var(--muted)">Enter your employee ID to begin a face scan</div>';
+  badge('Enter employee ID to begin');
+  $('identityInput').focus();
+};
 
 /* Enrollment (with liveness + duplicate ID / name / face checks) */
 const normName = n => n.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -525,8 +617,8 @@ $('btnEnroll').onclick = async () => {
     const avg = new Array(128).fill(0);
     samples.forEach(s => s.forEach((v, i) => { avg[i] += v / samples.length; }));
 
-    if (matcher) {
-      const m = matcher.findBestMatch(Float32Array.from(avg));
+    if (enrollmentMatcher) {
+      const m = enrollmentMatcher.findBestMatch(Float32Array.from(avg));
       if (m.label !== 'unknown') { 
         const msgTxt = 'This face is already enrolled as ' + names[m.label] + ' (ID ' + m.label + ').';
         msg(msgTxt); 
@@ -573,6 +665,7 @@ $('btnEnroll').onclick = async () => {
 (async function init() {
   $('chooseScan').disabled = $('chooseEnroll').disabled = true;
   loadBlinker().catch(e => console.warn('MediaPipe blink detector unavailable, using fallback', e));
+  startGPS();
   try {
     $('homeMsg').textContent = 'Loading face models…';
     await Promise.all([
