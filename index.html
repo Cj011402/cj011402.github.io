@@ -34,8 +34,8 @@
   main { max-width: 100%; margin:0 auto; padding:0 8px; width:100%; box-sizing:border-box; }
   .cam { position:relative; border-radius:12px; overflow:hidden; background:#000; width:100%; aspect-ratio:4/3; height: min(calc(100vw - 16px) * 3 / 4, 72dvh); max-height: 75dvh; }
   video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
-  #badge { position:absolute; left:10px; right:10px; bottom:10px; padding:8px 12px; border-radius:8px; background:rgba(15,23,42,.85); text-align:center; font-size:14px; }
-  #badge.ok { background:rgba(34,197,94,.9); } #badge.warn { background:rgba(245,158,11,.9); color:#000; } #badge.bad { background:rgba(239,68,68,.9); }
+  #badge { position:absolute; left:10px; right:10px; bottom:10px; padding:8px 12px; border-radius:8px; background:rgba(15,23,42,.85); color:#fff; text-align:center; font-size:14px; }
+  #badge.ok { background:rgba(21,128,61,.95); } #badge.warn { background:rgba(245,158,11,.9); color:#000; } #badge.bad { background:rgba(185,28,28,.95); }
   #result { margin-top:14px; padding:18px; border-radius:12px; background:var(--card); text-align:center; min-height:84px; }
   #result .type { font-size:34px; font-weight:700; }
   #result .IN { color:var(--ok); } #result .OUT { color:var(--warn); } #result .ERR { color:var(--bad); font-size:18px; }
@@ -56,6 +56,9 @@
   #homeMsg { text-align:center; font-size:14px; color:var(--muted); min-height:20px; }
   #prompt { position:absolute; left:10px; right:10px; top:10px; padding:12px; border-radius:10px; background:rgba(59,130,246,.92); text-align:center; font-size:20px; font-weight:700; }
   [hidden] { display:none !important; }
+  @media (max-width:600px) {
+    .cam { aspect-ratio:auto; height:min(72dvh, calc(100dvh - 260px)); max-height:none; }
+  }
 
   /* Modal */
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; animation:fadeIn 0.3s ease; }
@@ -268,8 +271,7 @@ async function loadEmployees() {
 }
 
 /* ---------- Liveness check (rejects printed photos / pictures on a screen) ----------
-   A flat picture can't turn its head in 3D or blink, so the person must do both,
-   in a random order and random direction, within a time limit. */
+   Require a head turn, a tilt, and a blink in a random order and direction, within a time limit. */
 function eyeEAR(p) {
   const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   return (d(p[1], p[5]) + d(p[2], p[4])) / (2 * d(p[0], p[3]));
@@ -280,7 +282,8 @@ function faceMetrics(lm) {
     ear: (eyeEAR(p.slice(36, 42)) + eyeEAR(p.slice(42, 48))) / 2,
     // Nose tip position between the outer eye corners: ~0.5 when facing the camera.
     // Tilting a flat photo doesn't change this ratio; turning a real head does.
-    yaw: (p[30].x - p[36].x) / (p[45].x - p[36].x)
+    yaw: (p[30].x - p[36].x) / (p[45].x - p[36].x),
+    pitch: (p[30].y - (p[36].y + p[45].y) / 2) / (p[8].y - (p[36].y + p[45].y) / 2)
   };
 }
 // Runs fast detection until test() returns true. Fails on timeout, lost face, extra faces or leaving the module.
@@ -342,9 +345,10 @@ async function blinkMP(ms, my) {
 async function liveness(my) {
   // Baseline: looking straight
   say('Look straight at the camera');
-  const yaws = [], ears = [];
-  if (!await waitFor(m => { yaws.push(m.yaw); ears.push(m.ear); return yaws.length >= 4; }, 4000, my)) return false;
+  const yaws = [], pitches = [], ears = [];
+  if (!await waitFor(m => { yaws.push(m.yaw); pitches.push(m.pitch); ears.push(m.ear); return yaws.length >= 4; }, 4000, my)) return false;
   const y0 = yaws.sort((a, b) => a - b)[2];
+  const pitch0 = pitches.sort((a, b) => a - b)[2];
   const earOpen = ears.sort((a, b) => a - b)[2];
 
   const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
@@ -368,7 +372,18 @@ async function liveness(my) {
       return closed && m.ear > open * 0.9;
     }, 7000, my, fastOpts());
   };
-  const steps = Math.random() < 0.5 ? [turn, blink] : [blink, turn];
+  const tilt = async () => {
+    say('Tilt your head up or down');
+    const moved = await waitFor(m => Math.abs(m.pitch - pitch0) > 0.08, 7000, my);
+    if (!moved) return false;
+    say('Now look straight again');
+    return waitFor(m => Math.abs(m.pitch - pitch0) < 0.04, 5000, my);
+  };
+  const steps = [turn, blink, tilt];
+  for (let i = steps.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [steps[i], steps[j]] = [steps[j], steps[i]];
+  }
   for (const step of steps) if (!await step()) return false;
   say('');
   return true;
