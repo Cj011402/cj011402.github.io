@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<title>GSDC In &amp; Out</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  document.documentElement.dataset.theme = localStorage.getItem('gsdc-theme') ||
+    (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+</script>
+<style>
+  :root, [data-theme="dark"] {
+    --bg:#0b1224; --card:rgba(22,32,58,.88); --field:#0b1224; --border:#3a4a6b; --text:#f1f5f9; --muted:#b6c2d6;
+    --ok:#22c55e; --warn:#f59e0b; --bad:#f87171; --accent:#2f5fe0; --enroll:#15803d; --logo-op:.10; color-scheme:dark;
+  }
+  [data-theme="light"] {
+    --bg:#f4f6fb; --card:rgba(255,255,255,.9); --field:#ffffff; --border:#c3cad8; --text:#0f172a; --muted:#475569;
+    --ok:#15803d; --warn:#b45309; --bad:#c81e2a; --accent:#0a1a6b; --enroll:#15803d; --logo-op:.12; color-scheme:light;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); transition:background .2s,color .2s; }
+  /* GSDC logo watermark behind everything */
+  body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:url("assets/gsdc-logo.png") center/min(80vw,520px) no-repeat; opacity:var(--logo-op); }
+  header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; }
+  header h1 { font-size:18px; margin:0; }
+  #clock { font-variant-numeric:tabular-nums; color:var(--muted); }
+  .hright { display:flex; align-items:center; gap:10px; }
+  #btnTheme { border:1px solid var(--border); background:var(--card); color:var(--text); padding:7px 11px; border-radius:999px; font-size:14px; cursor:pointer; }
+  nav { display:flex; gap:8px; padding:0 16px 12px; }
+  nav button { flex:1; padding:10px; border:0; border-radius:8px; background:var(--card); color:var(--muted); font-size:15px; cursor:pointer; }
+  nav button.on { background:var(--accent); color:#fff; }
+  main { max-width:520px; margin:0 auto; padding:0 16px 24px; }
+  .cam { position:relative; border-radius:14px; overflow:hidden; background:#000; aspect-ratio:4/3; }
+  video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+  #badge { position:absolute; left:10px; right:10px; bottom:10px; padding:8px 12px; border-radius:8px; background:rgba(15,23,42,.85); text-align:center; font-size:14px; }
+  #badge.ok { background:rgba(34,197,94,.9); } #badge.warn { background:rgba(245,158,11,.9); color:#000; } #badge.bad { background:rgba(239,68,68,.9); }
+  #result { margin-top:14px; padding:18px; border-radius:12px; background:var(--card); text-align:center; min-height:84px; }
+  #result .type { font-size:34px; font-weight:700; }
+  #result .IN { color:var(--ok); } #result .OUT { color:var(--warn); } #result .ERR { color:var(--bad); font-size:18px; }
+  #result .name { font-size:20px; margin-top:4px; } #result .time { color:var(--muted); margin-top:2px; }
+  #gps { margin-top:10px; font-size:13px; color:var(--muted); text-align:center; }
+  .form { margin-top:14px; background:var(--card); padding:16px; border-radius:12px; display:grid; gap:10px; }
+  .form input { padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:15px; }
+  .form button { padding:12px; border:0; border-radius:8px; background:var(--enroll); color:#fff; font-size:16px; font-weight:600; cursor:pointer; }
+  .form button:disabled { opacity:.5; }
+  #enrollMsg { font-size:14px; text-align:center; color:var(--muted); min-height:20px; }
+  .back { border:0; background:var(--card); color:var(--text); padding:8px 12px; border-radius:8px; font-size:14px; cursor:pointer; }
+  #home { max-width:520px; margin:0 auto; padding:24px 16px; display:grid; gap:14px; }
+  #home .lead { text-align:center; color:var(--muted); margin:0 0 6px; }
+  .choice { display:flex; flex-direction:column; gap:4px; padding:28px 20px; border:0; border-radius:14px; color:#fff; cursor:pointer; text-align:left; }
+  .choice.scan { background:var(--accent); } .choice.enroll { background:var(--enroll); }
+  .choice .big { font-size:26px; font-weight:700; } .choice .sub { font-size:14px; opacity:.85; }
+  .choice:disabled { opacity:.5; cursor:wait; }
+  #homeMsg { text-align:center; font-size:14px; color:var(--muted); min-height:20px; }
+  #prompt { position:absolute; left:10px; right:10px; top:10px; padding:12px; border-radius:10px; background:rgba(59,130,246,.92); text-align:center; font-size:20px; font-weight:700; }
+  [hidden] { display:none !important; }
+
+  /* Modal */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; animation:fadeIn 0.3s ease; }
+  .modal { background:var(--card); border-radius:16px; max-width:400px; width:90%; padding:32px 24px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.5); border:2px solid var(--border); animation:scaleIn 0.3s ease; position:relative; overflow:hidden; }
+  .modal.success { border-color:var(--ok); }
+  .modal.warning { border-color:var(--warn); }
+  .modal-icon { font-size:64px; margin-bottom:16px; display:block; animation:bounce 0.6s ease; }
+  .modal-title { font-size:24px; font-weight:700; margin:0 0 12px; }
+  .modal.success .modal-title { color:var(--ok); }
+  .modal.warning .modal-title { color:var(--warn); }
+  .modal-message { font-size:16px; color:var(--text); margin:0 0 24px; line-height:1.5; }
+  .modal-btn { padding:12px 32px; border:0; border-radius:10px; background:var(--accent); color:#fff; font-size:16px; font-weight:600; cursor:pointer; transition:transform 0.2s; }
+  .modal-btn:hover { transform:scale(1.05); }
+  .modal.success .modal-btn { background:var(--ok); }
+  .modal.warning .modal-btn { background:var(--warn); color:#000; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes scaleIn { from { transform:scale(0.8); opacity:0; } to { transform:scale(1); opacity:1; } }
+  @keyframes bounce { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+  #confetti-canvas { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1001; }
+</style>
+</head>
+<body>
+<header><button id="btnBack" class="back" hidden>&larr; Back</button><h1>GSDC In &amp; Out</h1><div class="hright"><div id="clock"></div><button id="btnTheme" type="button" aria-label="Switch dark / light mode"></button></div></header>
+
+<section id="home">
+  <p class="lead">What would you like to do?</p>
+  <button class="choice scan" id="chooseScan"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></button>
+  <button class="choice enroll" id="chooseEnroll"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></button>
+  <div id="homeMsg">Loading…</div>
+</section>
+
+<main id="app" hidden>
+  <div class="cam">
+    <video id="video" autoplay muted playsinline></video>
+    <div id="prompt" hidden></div>
+    <div id="badge">Starting…</div>
+  </div>
+
+  <section id="scanPane">
+    <div id="result"><div style="color:var(--muted)">Look at the camera, then follow the on-screen instructions to record IN / OUT</div></div>
+    <div id="gps">GPS: waiting…</div>
+  </section>
+
+  <section id="enrollPane" hidden>
+    <div class="form">
+      <input id="pin" type="password" placeholder="Admin PIN" autocomplete="off">
+      <input id="empId" placeholder="Employee ID">
+      <input id="empName" placeholder="Full name">
+      <button id="btnEnroll">Capture face &amp; save</button>
+      <div id="enrollMsg">Face the camera, then press the button.</div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script>
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+
+let matcher = null, names = {}, cfg = { threshold: 0.5 };
+let mode = 'home', busy = false, pos = null, streak = { id: null, n: 0 };
+
+// ====== SET THESE TWO ======
+const API_URL = 'https://script.google.com/macros/s/AKfycbwdfR3fnuDQpwsYbkpax_MW2oDCn8ypL5_wjkTreKf6X6fHjLHi1CmeoUyu8ZHhf2bF/exec'; // ends with /exec
+const API_KEY = 'x7Kp29qLmA';               // same as API_KEY in the Config tab
+// ===========================
+
+async function gs(fn, ...args) {
+  // No Content-Type header on purpose: keeps it a "simple" request so Apps Script accepts it from another site.
+  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ key: API_KEY, fn: fn, args: args }) });
+  if (!res.ok) throw new Error('Server error ' + res.status);
+  return res.json();
+}
+function badge(text, cls) { const b = $('badge'); b.textContent = text; b.className = cls || ''; }
+function say(text) { const p = $('prompt'); p.textContent = text || ''; p.hidden = !text; }
+
+/* Confetti */
+function shootConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (typeof confetti === 'function') {
+    const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });
+    const duration = 3000;
+    const end = Date.now() + duration;
+    (function frame() {
+      myConfetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 } });
+      myConfetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 } });
+      if (Date.now() < end) { requestAnimationFrame(frame); }
+    }());
+  }
+}
+
+/* Modal */
+function showModal(opts) {
+  const overlay = document.getElementById('appModal');
+  const modal = document.getElementById('modalContent');
+  const icon = document.getElementById('modalIcon');
+  const title = document.getElementById('modalTitle');
+  const msg = document.getElementById('modalMessage');
+  const btn = document.getElementById('modalBtn');
+  modal.className = 'modal ' + (opts.type || '');
+  icon.textContent = opts.icon || '🎉';
+  title.textContent = opts.title || 'Success!';
+  msg.textContent = opts.message || '';
+  btn.onclick = function() { overlay.style.display = 'none'; };
+  overlay.style.display = 'flex';
+  if (opts.type === 'success') { shootConfetti(); }
+}
+
+/* Dark / light mode */
+function paintThemeBtn() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  $('btnTheme').textContent = dark ? '☀️ Light' : '🌙 Dark';
+}
+$('btnTheme').onclick = () => {
+  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem('gsdc-theme', t);
+  paintThemeBtn();
+};
+paintThemeBtn();
+
+/* Clock */
+setInterval(() => { $('clock').textContent = new Date().toLocaleTimeString(); }, 1000);
+
+/* ---------- Screens: home (no camera) -> Scan or Enroll ---------- */
+let stream = null, gpsWatch = null, session = 0;
+
+async function startCamera() {
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+    throw new Error('Camera API unavailable. Do not open this file directly (file://). Run it via http://localhost or http://127.0.0.1 with a local server, and use Chrome/Edge.');
+  }
+  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+  const v = $('video');
+  v.srcObject = stream;
+  await new Promise(r => { v.onloadedmetadata = r; });
+  await v.play();
+}
+function stopCamera() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+  $('video').srcObject = null;
+}
+
+async function openModule(m) {
+  mode = m;
+  const my = ++session;
+  $('home').hidden = true; $('app').hidden = false; $('btnBack').hidden = false;
+  $('scanPane').hidden = m !== 'scan';
+  $('enrollPane').hidden = m !== 'enroll';
+  $('result').innerHTML = '<div style="color:var(--muted)">Look at the camera, then follow the on-screen instructions to record IN / OUT</div>';
+  $('enrollMsg').textContent = 'Face the camera, then press the button.';
+  say(''); streak = { id: null, n: 0 }; busy = false;
+  try {
+    badge('Starting camera…');
+    await startCamera();
+    if (my !== session) { stopCamera(); return; }
+    if (m === 'scan') startGPS();
+    badge('Ready');
+    if (m === 'scan') loop(my);
+  } catch (e) {
+    badge('Camera error: ' + (e.message || e), 'bad');
+  }
+}
+function goHome() {
+  session++; mode = 'home'; busy = false;
+  stopCamera(); stopGPS(); say('');
+  $('app').hidden = true; $('home').hidden = false; $('btnBack').hidden = true;
+}
+$('chooseScan').onclick = () => openModule('scan');
+$('chooseEnroll').onclick = () => openModule('enroll');
+$('btnBack').onclick = goHome;
+
+/* GPS */
+function startGPS() {
+  if (!navigator.geolocation) { $('gps').textContent = 'GPS not supported'; return; }
+  stopGPS();
+  gpsWatch = navigator.geolocation.watchPosition(
+    p => {
+      pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+      $('gps').textContent = 'GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)';
+    },
+    e => { $('gps').textContent = 'GPS unavailable: ' + e.message; },
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+  );
+}
+function stopGPS() {
+  if (gpsWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatch);
+  gpsWatch = null;
+}
+
+/* Load employees + build matcher */
+async function loadEmployees() {
+  const boot = await gs('getBootData');
+  if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
+  cfg = boot.config;
+  names = {};
+  matcher = null;
+  if (boot.employees.length) {
+    const labeled = boot.employees.map(e => {
+      names[e.id] = e.name;
+      return new faceapi.LabeledFaceDescriptors(e.id, [Float32Array.from(e.descriptor)]);
+    });
+    matcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
+  }
+}
+
+/* ---------- Liveness check (rejects printed photos / pictures on a screen) ----------
+   A flat picture can't turn its head in 3D or blink, so the person must do both,
+   in a random order and random direction, within a time limit. */
+function eyeEAR(p) {
+  const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  return (d(p[1], p[5]) + d(p[2], p[4])) / (2 * d(p[0], p[3]));
+}
+function faceMetrics(lm) {
+  const p = lm.positions;
+  return {
+    ear: (eyeEAR(p.slice(36, 42)) + eyeEAR(p.slice(42, 48))) / 2,
+    // Nose tip position between the outer eye corners: ~0.5 when facing the camera.
+    // Tilting a flat photo doesn't change this ratio; turning a real head does.
+    yaw: (p[30].x - p[36].x) / (p[45].x - p[36].x)
+  };
+}
+// Runs fast detection until test() returns true. Fails on timeout, lost face, extra faces or leaving the module.
+async function waitFor(test, ms, my, opts) {
+  const end = Date.now() + ms;
+  let lost = 0;
+  while (Date.now() < end) {
+    if (my !== session) return false;
+    const all = await faceapi.detectAllFaces($('video'), opts || detOpts()).withFaceLandmarks();
+    if (all.length > 1) { badge('Only one person at a time', 'warn'); return false; }
+    if (all.length === 1) {
+      lost = 0;
+      if (test(faceMetrics(all[0].landmarks))) return true;
+    } else if (++lost > 10) { badge('Face lost', 'warn'); return false; }
+    await sleep(20);
+  }
+  badge('Took too long', 'warn');
+  return false;
+}
+/* Blink detection with MediaPipe Face Landmarker: it reports an eye-blink score per eye
+   and runs fast enough to catch a quick blink. Loaded in the background; if it fails to
+   load, the face-api eye-opening check above is used instead. */
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+let blinker = null;
+async function loadBlinker() {
+  const vision = await import(MP + '/vision_bundle.mjs');
+  const files = await vision.FilesetResolver.forVisionTasks(MP + '/wasm');
+  const make = delegate => vision.FaceLandmarker.createFromOptions(files, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+      delegate
+    },
+    runningMode: 'VIDEO', numFaces: 2, outputFaceBlendshapes: true
+  });
+  try { blinker = await make('GPU'); } catch (e) { blinker = await make('CPU'); }
+}
+async function blinkMP(ms, my) {
+  const v = $('video'), end = Date.now() + ms;
+  let closed = false, lost = 0, t = 0;
+  while (Date.now() < end) {
+    if (my !== session) return false;
+    t = Math.max(t + 1, performance.now());
+    const r = blinker.detectForVideo(v, t);
+    const faces = r.faceBlendshapes || [];
+    if (faces.length > 1) { badge('Only one person at a time', 'warn'); return false; }
+    if (faces.length === 1) {
+      lost = 0;
+      const s = n => (faces[0].categories.find(c => c.categoryName === n) || { score: 0 }).score;
+      const shut = Math.min(s('eyeBlinkLeft'), s('eyeBlinkRight'));
+      if (!closed && shut > 0.45) closed = true;
+      else if (closed && shut < 0.3) return true;
+    } else if (++lost > 30) { badge('Face lost', 'warn'); return false; }
+    await sleep(15);
+  }
+  badge('Took too long', 'warn');
+  return false;
+}
+
+async function liveness(my) {
+  // Baseline: looking straight
+  say('Look straight at the camera');
+  const yaws = [], ears = [];
+  if (!await waitFor(m => { yaws.push(m.yaw); ears.push(m.ear); return yaws.length >= 4; }, 4000, my)) return false;
+  const y0 = yaws.sort((a, b) => a - b)[2];
+  const earOpen = ears.sort((a, b) => a - b)[2];
+
+  const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
+  const turn = async () => {
+    say('Slowly turn your head to the ' + dir);
+    // Camera image is not mirrored: subject's left = larger ratio
+    const ok = await waitFor(m => dir === 'LEFT' ? m.yaw > y0 + 0.15 : m.yaw < y0 - 0.15, 7000, my);
+    if (!ok) return false;
+    say('Now look straight again');
+    return waitFor(m => Math.abs(m.yaw - y0) < 0.07, 5000, my);
+  };
+  const blink = async () => {
+    say('Blink your eyes');
+    if (blinker) return blinkMP(7000, my);
+    // Fallback: the 68-point model only partly closes the eyes on a blink, so look for a
+    // smaller dip relative to the recent open-eye level instead of a fixed 30% drop.
+    let open = earOpen, closed = false;
+    return waitFor(m => {
+      open = Math.max(open * 0.97, m.ear);
+      if (!closed && m.ear < open * 0.8) closed = true;
+      return closed && m.ear > open * 0.9;
+    }, 7000, my, fastOpts());
+  };
+  const steps = Math.random() < 0.5 ? [turn, blink] : [blink, turn];
+  for (const step of steps) if (!await step()) return false;
+  say('');
+  return true;
+}
+
+/* Show result card */
+function showResult(r) {
+  const el = $('result');
+  el.innerHTML = '';
+  const add = (cls, txt) => { const d = document.createElement('div'); d.className = cls; d.textContent = txt; el.appendChild(d); };
+  if (r.ok) {
+    add('type ' + r.type, r.type === 'IN' ? 'TIME IN' : 'TIME OUT');
+    add('name', r.name);
+    add('time', r.time);
+    badge('Recorded ' + r.type, 'ok');
+    showModal({
+      type: 'success',
+      icon: '🎉',
+      title: 'Congratulations!',
+      message: (r.type === 'IN' ? 'Time In' : 'Time Out') + ' recorded successfully for ' + r.name + ' at ' + r.time
+    });
+  } else {
+    if (r.message && r.message.toLowerCase().includes('already')) {
+      showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: r.message });
+    } else if (r.message && r.message.toLowerCase().includes('cooldown')) {
+      showModal({ type: 'warning', icon: '⚠️', title: 'Already Scanned', message: r.message });
+    } else if (r.message) {
+      showModal({ type: 'warning', icon: '⚠️', title: 'Notice', message: r.message });
+    }
+    add('type ERR', r.message || 'Error');
+    if (r.name) add('name', r.name);
+    badge(r.cooldown ? 'Already scanned' : 'Not recorded', 'warn');
+  }
+}
+
+async function submit(id, dist, my) {
+  badge('Recording…');
+  try {
+    const r = await gs('recordScan', id,
+      pos ? pos.lat : null, pos ? pos.lng : null, pos ? pos.acc : null, dist);
+    if (my === session) showResult(r);
+  } catch (e) {
+    if (my === session) showResult({ ok: false, message: e.message || String(e) });
+  }
+  await sleep(4000);
+}
+
+/* Scan: recognize -> liveness challenge -> re-verify same person -> record */
+async function verifyAndSubmit(id, my) {
+  busy = true;
+  try {
+    badge('Liveness check: ' + names[id]);
+    if (!await liveness(my)) {
+      say('');
+      if (my === session) showResult({ ok: false, message: 'Liveness check failed. Please try again in person.' });
+      await sleep(2500);
+      return;
+    }
+    // Make sure the same real person is still in front of the camera
+    const d = await faceapi.detectSingleFace($('video'), detOpts()).withFaceLandmarks().withFaceDescriptor();
+    const m = d && matcher.findBestMatch(d.descriptor);
+    if (!m || m.label !== id) {
+      if (my === session) showResult({ ok: false, message: 'Face changed during check. Try again.' });
+      await sleep(2500);
+      return;
+    }
+    await submit(id, m.distance, my);
+  } finally {
+    say('');
+    streak = { id: null, n: 0 };
+    busy = false;
+  }
+}
+
+async function loop(my) {
+  if (my !== session) return;
+  try {
+    if (!busy) {
+      const d = await faceapi.detectSingleFace($('video'), detOpts()).withFaceLandmarks().withFaceDescriptor();
+      if (my !== session) return;
+      if (!d) {
+        badge('No face detected');
+        streak = { id: null, n: 0 };
+      } else if (!matcher) {
+        badge('No employees enrolled yet', 'warn');
+      } else {
+        const m = matcher.findBestMatch(d.descriptor);
+        if (m.label === 'unknown') {
+          badge('Face not recognized', 'warn');
+          streak = { id: null, n: 0 };
+        } else {
+          streak = streak.id === m.label ? { id: m.label, n: streak.n + 1 } : { id: m.label, n: 1 };
+          badge('Hold still… ' + names[m.label]);
+          if (streak.n >= 3) await verifyAndSubmit(m.label, my);
+        }
+      }
+    }
+  } catch (e) { console.error(e); }
+  setTimeout(() => loop(my), 250);
+}
+
+/* Enrollment (with liveness + duplicate ID / name / face checks) */
+const normName = n => n.toLowerCase().replace(/\s+/g, ' ').trim();
+$('btnEnroll').onclick = async () => {
+  const pin = $('pin').value, id = $('empId').value.trim(), name = $('empName').value.trim();
+  const msg = t => { $('enrollMsg').textContent = t; };
+  if (!pin || !id || !name) { msg('Please fill in PIN, ID and name.'); return; }
+  const my = session;
+  busy = true; $('btnEnroll').disabled = true;
+  try {
+    msg('Checking for duplicates…');
+    await loadEmployees(); // latest list, in case another device enrolled someone
+    const idTaken = Object.keys(names).find(k => k.toLowerCase() === id.toLowerCase());
+    if (idTaken) { 
+      const msgTxt = 'Employee ID ' + idTaken + ' is already enrolled (' + names[idTaken] + ').';
+      msg(msgTxt); 
+      showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
+      return; 
+    }
+    const nameTaken = Object.keys(names).find(k => normName(names[k]) === normName(name));
+    if (nameTaken) { 
+      const msgTxt = names[nameTaken] + ' is already enrolled under ID ' + nameTaken + '.';
+      msg(msgTxt); 
+      showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
+      return; 
+    }
+
+    msg('Liveness check — follow the instructions on the camera');
+    if (!await liveness(my)) { say(''); msg('Liveness check failed. The real person must be in front of the camera.'); return; }
+
+    msg('Capturing… hold still and look at the camera');
+    const samples = [];
+    for (let i = 0; i < 12 && samples.length < 5; i++) {
+      const d = await faceapi.detectSingleFace($('video'), detOpts()).withFaceLandmarks().withFaceDescriptor();
+      if (d) samples.push(d.descriptor);
+      await sleep(300);
+    }
+    if (samples.length < 3) { msg('Could not see a clear face. Try again with better light.'); return; }
+    const avg = new Array(128).fill(0);
+    samples.forEach(s => s.forEach((v, i) => { avg[i] += v / samples.length; }));
+
+    if (matcher) {
+      const m = matcher.findBestMatch(Float32Array.from(avg));
+      if (m.label !== 'unknown') { 
+        const msgTxt = 'This face is already enrolled as ' + names[m.label] + ' (ID ' + m.label + ').';
+        msg(msgTxt); 
+        showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
+        return; 
+      }
+    }
+
+    msg('Saving…');
+    const r = await gs('enrollEmployee', pin, id, name, avg);
+    msg(r.message);
+    if (r.ok) { 
+      showModal({
+        type: 'success',
+        icon: '🎉',
+        title: 'Congratulations!',
+        message: name + ' (ID: ' + id + ') has been enrolled successfully!'
+      });
+      $('empId').value = ''; $('empName').value = ''; await loadEmployees(); 
+    } else if (r.message && r.message.toLowerCase().includes('duplicate')) {
+      showModal({
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Duplicate Record',
+        message: r.message
+      });
+    } else if (r.message) {
+      showModal({
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Notice',
+        message: r.message
+      });
+    }
+  } catch (e) {
+    msg('Error: ' + (e.message || e));
+  } finally {
+    say('');
+    busy = false; $('btnEnroll').disabled = false;
+  }
+};
+
+/* Init: load models + employees on the home screen; camera starts only after a choice */
+(async function init() {
+  $('chooseScan').disabled = $('chooseEnroll').disabled = true;
+  loadBlinker().catch(e => console.warn('MediaPipe blink detector unavailable, using fallback', e));
+  try {
+    $('homeMsg').textContent = 'Loading face models…';
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]);
+    $('homeMsg').textContent = 'Loading employees…';
+    await loadEmployees();
+    $('homeMsg').textContent = '';
+    $('chooseScan').disabled = $('chooseEnroll').disabled = false;
+  } catch (e) {
+    $('homeMsg').textContent = 'Error: ' + (e.message || e);
+  }
+})();
+</script>
+  <canvas id="confetti-canvas"></canvas>
+  <div id="appModal" class="modal-overlay" style="display:none;">
+    <div class="modal" id="modalContent">
+      <span class="modal-icon" id="modalIcon">🎉</span>
+      <h2 class="modal-title" id="modalTitle">Success!</h2>
+      <p class="modal-message" id="modalMessage">Congratulations!</p>
+      <button class="modal-btn" id="modalBtn">OK</button>
+    </div>
+  </div>
+  <canvas id="confetti-canvas"></canvas>
+  <div id="appModal" class="modal-overlay" style="display:none;">
+    <div class="modal" id="modalContent">
+      <span class="modal-icon" id="modalIcon">🎉</span>
+      <h2 class="modal-title" id="modalTitle">Success!</h2>
+      <p class="modal-message" id="modalMessage">Congratulations!</p>
+      <button class="modal-btn" id="modalBtn">OK</button>
+    </div>
+  </div>
+</body>
+</html>
