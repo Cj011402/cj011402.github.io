@@ -19,14 +19,14 @@
     --ok:#15803d; --warn:#b45309; --bad:#c81e2a; --accent:#0a1a6b; --enroll:#15803d; --logo-op:.12; color-scheme:light;
   }
   * { box-sizing:border-box; }
-  body { margin:0; min-height:100dvh; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); transition:background .2s,color .2s; position:relative; }
+  body { margin:0; min-height:100vh; min-height:100dvh; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); transition:background .2s,color .2s; position:relative; overflow-x:hidden; }
   /* GSDC logo watermark behind everything */
   body::before { content:""; position:fixed; inset:0; z-index:-2; pointer-events:none;
     background-image:url("./gsdc-logo.png"); background-repeat:no-repeat; background-position:center; background-size:min(80vw,520px); opacity:var(--logo-op); filter:brightness(1.1); }
-  header { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:8px; padding:10px 12px; max-width:100%; margin:0 auto; width:100%; box-sizing:border-box; }
+  header { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:8px; padding:clamp(8px,2vw,12px); max-width:100%; margin:0 auto; width:100%; box-sizing:border-box; }
   .hleft { display:flex; align-items:center; gap:8px; min-width:0; }
-  header h1 { font-size:18px; margin:0; }
-  #clock { font-variant-numeric:tabular-nums; color:var(--muted); }
+  header h1 { font-size:clamp(15px,4vw,18px); margin:0; }
+  #clock { font-variant-numeric:tabular-nums; color:var(--muted); font-size:clamp(10px,3.7vw,14px); white-space:nowrap; }
   .hright { display:flex; align-items:center; justify-self:end; gap:10px; }
   #btnTheme { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); background:var(--card); color:var(--text); padding:6px 10px; border-radius:999px; font-size:14px; cursor:pointer; }
   .theme-track { position:relative; display:inline-flex; align-items:center; justify-content:space-between; width:44px; height:24px; padding:0 5px; border-radius:999px; background:#64748b; color:#fff; }
@@ -40,34 +40,36 @@
   nav { display:flex; gap:8px; padding:0 16px 12px; max-width:min(1200px,98vw); margin:0 auto; }
   nav button { flex:1; padding:10px; border:0; border-radius:8px; background:var(--card); color:var(--muted); font-size:15px; cursor:pointer; }
   nav button.on { background:var(--accent); color:#fff; }
-  main { max-width: 100%; margin:0 auto; padding:0 8px; width:100%; box-sizing:border-box; }
-  .cam { position:relative; border-radius:12px; overflow:hidden; background:#000; width:100%; aspect-ratio:4/3; height: min(calc(100vw - 16px) * 3 / 4, 72dvh); max-height: 75dvh; }
-  video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); clip-path:ellipse(min(32%, 180px) 39% at 50% 50%); }
+  main { max-width:1100px; margin:0 auto; padding:0 clamp(8px,2vw,16px); width:100%; box-sizing:border-box; }
+  #app { max-width:1100px; margin:0 auto; }
+  .cam { --face-oval-rx:min(32%, 180px); --face-oval-ry:39%; --face-guide-width:min(64%, 360px); --face-guide-height:78%; position:relative; border-radius:12px; overflow:hidden; background:#000; width:100%; height:clamp(300px, 62dvh, 680px); }
+  video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); clip-path:ellipse(var(--face-oval-rx) var(--face-oval-ry) at 50% 50%); }
   .face-guide { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-  .face-guide::before { content:""; width:min(64%, 360px); height:78%; border:3px solid rgba(255,255,255,.9); border-radius:50%; box-shadow:0 0 18px rgba(255,255,255,.35); }
+  .face-guide::before { content:""; width:var(--face-guide-width); height:var(--face-guide-height); border:3px solid rgba(255,255,255,.9); border-radius:50%; box-shadow:0 0 18px rgba(255,255,255,.35); }
   .face-guide-label { position:absolute; bottom:52px; left:50%; transform:translateX(-50%); max-width:calc(100% - 32px); padding:7px 12px; border-radius:999px; background:rgba(15,23,42,.78); color:#fff; text-align:center; font-size:13px; white-space:nowrap; }
   #badge { position:absolute; left:10px; right:10px; bottom:10px; padding:8px 12px; border-radius:8px; background:rgba(15,23,42,.85); color:#fff; text-align:center; font-size:14px; }
   #badge.ok { background:rgba(21,128,61,.95); } #badge.warn { background:rgba(245,158,11,.9); color:#000; } #badge.bad { background:rgba(185,28,28,.95); }
-  #result { margin-top:14px; padding:18px; border-radius:12px; background:var(--card); text-align:center; min-height:84px; }
+  #result { margin-top:14px; padding:18px; border-radius:12px; background:var(--card); text-align:center; min-height:84px; font-size:14px; }
   #result .type { font-size:34px; font-weight:700; }
-  #result .IN { color:var(--ok); } #result .OUT { color:var(--warn); } #result .ERR { color:var(--bad); font-size:18px; }
+  #result .IN { color:var(--ok); } #result .OUT { color:var(--warn); } #result .ERR { color:var(--bad); font-size:14px; }
   #result .name { font-size:20px; margin-top:4px; } #result .time { color:var(--muted); margin-top:2px; }
   .gps-status { margin-top:10px; font-size:13px; color:var(--muted); text-align:center; }
-  .form { margin-top:14px; background:var(--card); padding:16px; border-radius:12px; display:grid; gap:10px; }
-  .form input { padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:15px; }
-  .form button { padding:12px; border:0; border-radius:8px; background:var(--enroll); color:#fff; font-size:16px; font-weight:600; cursor:pointer; }
+  .form { margin-top:14px; background:var(--card); padding:clamp(12px,3vw,20px); border-radius:12px; display:grid; gap:clamp(8px,2vw,12px); min-width:0; }
+  .form input { width:100%; min-width:0; padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:clamp(14px,3.8vw,16px); }
+  #enrollPane input::placeholder { font-size:clamp(10px,3.6vw,14px); }
+  .form button { width:100%; min-width:0; padding:12px; border:0; border-radius:8px; background:var(--enroll); color:#fff; font-size:clamp(14px,4vw,16px); font-weight:600; cursor:pointer; }
   .identity-form { margin-top:10px; }
   .identity-form button[type="button"] { background:var(--card); color:var(--text); border:1px solid var(--border); }
   #identityError { min-height:20px; color:var(--bad); text-align:center; font-size:14px; }
   .form button:disabled { opacity:.5; }
   #enrollMsg { font-size:14px; text-align:center; color:var(--muted); min-height:20px; }
   .back { border:0; background:var(--card); color:var(--text); padding:8px 12px; border-radius:8px; font-size:14px; cursor:pointer; }
-  #home { max-width:520px; margin:0 auto; padding:24px 16px; display:grid; gap:14px; }
+  #home { width:min(520px,100%); margin:0 auto; padding:clamp(16px,4vw,24px) clamp(12px,4vw,16px); display:grid; gap:clamp(10px,3vw,14px); }
   #home .lead { text-align:center; color:var(--muted); margin:0 0 6px; }
-  .choice { display:flex; align-items:center; gap:16px; padding:20px; border:0; border-radius:14px; color:#fff; cursor:pointer; text-align:left; }
+  .choice { display:flex; align-items:center; gap:clamp(10px,3vw,16px); padding:clamp(14px,4vw,20px); min-width:0; width:100%; border:0; border-radius:14px; color:#fff; cursor:pointer; text-align:left; }
   .choice.scan { background:var(--accent); } .choice.enroll { background:var(--enroll); }
   .choice-copy { display:flex; flex-direction:column; gap:4px; min-width:0; }
-  .choice .big { font-size:26px; font-weight:700; white-space:nowrap; } .choice .sub { font-size:14px; opacity:.85; white-space:nowrap; }
+  .choice .big { font-size:clamp(22px,6vw,26px); font-weight:700; white-space:nowrap; } .choice .sub { font-size:clamp(11px,3.5vw,14px); opacity:.85; white-space:normal; }
   .scan-visual { position:relative; display:block; flex:none; width:56px; height:56px; color:#fff; }
   .scan-visual svg { display:block; width:100%; height:100%; }
   .scan-line { position:absolute; left:11px; right:11px; top:9px; height:2px; border-radius:2px; background:#67f5e5; box-shadow:0 0 8px #67f5e5; animation:faceScanSweep 1.8s ease-in-out infinite alternate; }
@@ -97,9 +99,72 @@
   #prompt { position:absolute; left:10px; right:10px; top:10px; padding:12px; border-radius:10px; background:rgba(59,130,246,.92); text-align:center; font-size:20px; font-weight:700; }
   [hidden] { display:none !important; }
   @media (max-width:600px) {
-    .cam { aspect-ratio:auto; height:min(72dvh, calc(100dvh - 260px)); max-height:none; }
-    video { clip-path:ellipse(min(39%, 190px) 36% at 50% 50%); }
-    .face-guide::before { width:min(78%, 380px); height:72%; }
+    .cam { --face-oval-rx:min(39%, 190px); --face-oval-ry:36%; --face-guide-width:min(78%, 380px); --face-guide-height:72%; height:clamp(260px, 58dvh, 620px); }
+    .face-guide-label { bottom:clamp(48px,10vh,60px); font-size:clamp(11px,3.4vw,13px); }
+    #badge { left:8px; right:8px; bottom:8px; font-size:clamp(12px,3.6vw,14px); }
+    #result { padding:clamp(12px,4vw,18px); }
+  }
+  @media (max-width:360px) {
+    header { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:4px; }
+    header h1 { font-size:clamp(12px,4.2vw,14px); white-space:nowrap; }
+    #clock { font-size:10px; }
+    #btnTheme { gap:0; padding:4px; }
+    #themeLabel { display:none; }
+    .choice { gap:10px; }
+    .scan-visual { width:48px; height:48px; }
+    .scan-line { left:9px; right:9px; }
+    .choice .sub { font-size:11px; }
+    .face-guide-label { white-space:normal; text-align:center; }
+  }
+  @media (max-height:520px) and (orientation:landscape) {
+    .cam { height:clamp(190px, 58dvh, 360px); }
+    #home { padding-top:10px; padding-bottom:10px; gap:8px; }
+    .lead { margin-top:0; }
+  }
+  body[data-mode] { display:flex; flex-direction:column; height:100vh; height:100dvh; min-height:0; overflow:hidden; }
+  body[data-mode] #gps { flex:none; margin:2px 8px 6px; }
+  body[data-mode] #app { display:flex; flex:1 1 auto; flex-direction:column; gap:clamp(6px,1.5dvh,12px); min-height:0; overflow:hidden; padding-bottom:clamp(6px,1.5dvh,12px); }
+  body[data-mode] .cam { flex:1 1 0; min-height:0; height:auto; max-height:none; }
+  body[data-mode] #scanPane, body[data-mode] #enrollPane { flex:0 0 auto; min-height:0; min-width:0; }
+  body[data-mode] .form { margin-top:0; padding:clamp(8px,1.8dvh,16px); gap:clamp(5px,1.1dvh,10px); }
+  body[data-mode] .form input { padding:clamp(7px,1.5dvh,11px); }
+  body[data-mode] .form button { padding:clamp(7px,1.5dvh,11px); min-height:36px; }
+  body[data-mode] #result { margin-top:0; min-height:0; padding:clamp(8px,1.5dvh,14px); }
+  body[data-mode] #result .type { font-size:clamp(24px,6dvh,34px); }
+  body[data-mode] #result .name { font-size:clamp(16px,3.5dvh,20px); }
+  body[data-mode] #identityError { min-height:0; }
+  body[data-mode] #enrollMsg { min-height:0; }
+  body[data-mode] .face-guide-label { bottom:clamp(44px,9dvh,52px); }
+  body[data-mode] #badge { bottom:6px; padding:6px 8px; }
+  body[data-mode="enroll"] #app > .cam { flex:1 1 0; }
+  body[data-mode="enroll"] #enrollPane { flex:0 0 auto; }
+  body[data-mode="scan"] #app > .cam { flex:1 1 0; }
+  body[data-mode="scan"] #scanPane { display:flex; flex-direction:column; gap:clamp(6px,1.2dvh,10px); }
+  body[data-mode="scan"] #scanActions { margin:0; padding:clamp(6px,1.2dvh,10px); gap:clamp(4px,1dvh,8px); }
+  body[data-mode="scan"] #scanActions button { min-height:32px; padding:6px 8px; }
+  body[data-mode="scan"] #scanEmployee { font-size:14px; line-height:1.25; }
+  body[data-mode="scan"] #scanEmployee div + div { color:var(--muted); font-size:13px; }
+  body[data-mode="scan"] #result { flex:0 0 clamp(52px,10dvh,72px); height:clamp(52px,10dvh,72px); overflow:auto; display:flex; flex-direction:column; justify-content:center; }
+  body[data-mode="scan"] #result .type.ERR { font-size:14px; font-weight:400; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; line-height:1.25; }
+  @media (max-height:600px) {
+    body[data-mode] header { padding-top:4px; padding-bottom:4px; }
+    body[data-mode] #gps { margin-top:0; margin-bottom:3px; font-size:12px; }
+    body[data-mode] #app { gap:5px; padding-bottom:5px; }
+    body[data-mode] .form { padding:7px 10px; gap:4px; }
+    body[data-mode] .form input { padding:6px 8px; }
+    body[data-mode] .form button { min-height:32px; padding:5px 8px; }
+    body[data-mode] #result { padding:6px 8px; }
+    body[data-mode] #scanActions { padding:5px 8px; gap:4px; }
+    body[data-mode] #scanActions button { min-height:28px; padding:4px 6px; }
+  }
+  @media (max-width:360px) {
+    body[data-mode] header { gap:4px; }
+    body[data-mode] header h1 { font-size:14px; }
+    body[data-mode] #btnTheme { gap:0; padding:4px; font-size:12px; }
+    body[data-mode] #themeLabel { display:none; }
+    body[data-mode] .theme-track { width:38px; }
+    body[data-mode] .theme-thumb { width:18px; height:18px; }
+    body[data-mode] #btnTheme.is-dark .theme-thumb { transform:translateX(16px); }
   }
 
   /* Modal */
@@ -151,10 +216,10 @@
 
   <section id="scanPane">
     <form id="identityForm" class="form identity-form" hidden>
-      <label for="identityInput">Enter your employee ID before the face scan:</label>
+      <label for="identityInput">Enter your employee ID:</label>
       <input id="identityInput" autocomplete="off" required aria-describedby="identityError">
       <div id="identityError" aria-live="polite"></div>
-      <button id="identitySubmit" type="submit"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Continue to face scan</button>
+      <button id="identitySubmit" type="submit" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
     </form>
     <div id="scanActions" class="form" hidden>
       <div id="scanEmployee" aria-live="polite"></div>
@@ -169,7 +234,7 @@
       <input id="pin" type="password" placeholder="Admin PIN" autocomplete="off">
       <input id="empId" placeholder="Employee ID">
       <input id="empName" placeholder="Full name (First Name Middle Name Last Name)">
-      <button id="btnEnroll"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Capture face &amp; save</button>
+      <button id="btnEnroll" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
       <div id="enrollMsg">Face the camera, then press the button.</div>
     </div>
   </section>
@@ -274,6 +339,7 @@ function stopCamera() {
 
 async function openModule(m) {
   mode = m;
+  document.body.dataset.mode = m;
   const my = ++session;
   $('home').hidden = true; $('app').hidden = false; $('btnBack').hidden = false;
   $('appTitle').hidden = true;
@@ -285,6 +351,7 @@ async function openModule(m) {
   $('scanActions').hidden = true;
   activeScanId = null;
   $('identityInput').value = '';
+  updateIdentitySubmit();
   $('identityError').textContent = '';
   $('enrollMsg').textContent = 'Face the camera, then press the button.';
   say(''); busy = false;
@@ -303,6 +370,7 @@ async function openModule(m) {
 }
 function goHome() {
   session++; mode = 'home'; busy = false;
+  delete document.body.dataset.mode;
   activeScanId = null;
   stopCamera(); say('');
   $('app').hidden = true; $('home').hidden = false; $('btnBack').hidden = true;
@@ -583,6 +651,7 @@ async function runFaceScan(id, my) {
       $('scanActions').hidden = true;
       $('identityForm').hidden = false;
       $('identityInput').value = '';
+      updateIdentitySubmit();
       $('identityError').textContent = '';
       activeScanId = null;
     }
@@ -601,6 +670,10 @@ async function runFaceScan(id, my) {
   }
 }
 
+function updateIdentitySubmit() {
+ $('identitySubmit').disabled = !$('identityInput').value.trim();
+}
+$('identityInput').addEventListener('input', updateIdentitySubmit);
 $('identityForm').onsubmit = async event => {
   event.preventDefault();
   if (busy || mode !== 'scan') return;
@@ -629,7 +702,13 @@ $('identityForm').onsubmit = async event => {
       return;
     }
     activeScanId = id;
-    $('scanEmployee').textContent = 'Scanning for ' + names[id] + ' (ID: ' + id + ')';
+    const scanEmployee = $('scanEmployee');
+    scanEmployee.replaceChildren();
+    const employeeName = document.createElement('div');
+    employeeName.textContent = 'Scanning for ' + names[id];
+    const employeeId = document.createElement('div');
+    employeeId.textContent = 'ID: ' + id;
+    scanEmployee.append(employeeName, employeeId);
     $('identityInput').value = '';
     $('identityForm').hidden = true;
     $('scanActions').hidden = false;
@@ -641,7 +720,7 @@ $('identityForm').onsubmit = async event => {
     }
   } finally {
     busy = false;
-    $('identitySubmit').disabled = false;
+    updateIdentitySubmit();
   }
   if (my === session && activeScanId) await runFaceScan(activeScanId, my);
 };
@@ -656,6 +735,7 @@ $('cancelScan').onclick = () => {
   $('scanActions').hidden = true;
   $('identityForm').hidden = false;
   $('identityInput').value = '';
+  updateIdentitySubmit();
   $('identityError').textContent = '';
   $('result').innerHTML = '<div style="color:var(--muted)">Enter your employee ID to begin a face scan</div>';
   badge('Enter employee ID to begin');
@@ -667,6 +747,10 @@ const normalizeEmployeeId = value => value.replace(/\s+/g, '').toLocaleUpperCase
 const properCaseName = value => value.replace(/\s+/g, ' ').trim().toLocaleLowerCase().replace(/(^|[\s'-])(\p{L})/gu,
   (_, separator, letter) => separator + letter.toLocaleUpperCase());
 const normName = n => n.toLowerCase().replace(/\s+/g, ' ').trim();
+function updateEnrollButton() {
+  $('btnEnroll').disabled = !['pin', 'empId', 'empName'].every(id => $(id).value.trim());
+}
+['pin', 'empId', 'empName'].forEach(id => $(id).addEventListener('input', updateEnrollButton));
 $('btnEnroll').onclick = async () => {
   const pin = $('pin').value;
   const id = normalizeEmployeeId($('empId').value);
@@ -753,7 +837,7 @@ $('btnEnroll').onclick = async () => {
     msg('Error: ' + (e.message || e));
   } finally {
     say('');
-    busy = false; $('btnEnroll').disabled = false;
+    busy = false; updateEnrollButton();
     $('btnEnroll').classList.remove('is-capturing', 'is-saving');
   }
 };
