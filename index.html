@@ -23,24 +23,36 @@
   /* GSDC logo watermark behind everything */
   body::before { content:""; position:fixed; inset:0; z-index:-2; pointer-events:none;
     background-image:url("./gsdc-logo.png"); background-repeat:no-repeat; background-position:center; background-size:min(80vw,520px); opacity:var(--logo-op); filter:brightness(1.1); }
-  header { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; max-width:100%; margin:0 auto; width:100%; box-sizing:border-box; }
+  header { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:8px; padding:10px 12px; max-width:100%; margin:0 auto; width:100%; box-sizing:border-box; }
+  .hleft { display:flex; align-items:center; gap:8px; min-width:0; }
   header h1 { font-size:18px; margin:0; }
   #clock { font-variant-numeric:tabular-nums; color:var(--muted); }
-  .hright { display:flex; align-items:center; gap:10px; }
-  #btnTheme { border:1px solid var(--border); background:var(--card); color:var(--text); padding:7px 11px; border-radius:999px; font-size:14px; cursor:pointer; }
+  .hright { display:flex; align-items:center; justify-self:end; gap:10px; }
+  #btnTheme { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); background:var(--card); color:var(--text); padding:6px 10px; border-radius:999px; font-size:14px; cursor:pointer; }
+  .theme-track { position:relative; display:inline-flex; align-items:center; justify-content:space-between; width:44px; height:24px; padding:0 5px; border-radius:999px; background:#64748b; color:#fff; }
+  .theme-track svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .theme-thumb { position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.3); transition:transform .32s cubic-bezier(.2,.8,.2,1); }
+  #btnTheme.is-dark .theme-track { background:#334155; }
+  #btnTheme.is-dark .theme-thumb { transform:translateX(20px); }
+  #btnTheme:active .theme-thumb { width:23px; }
+  .action-icon { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; vertical-align:middle; }
+  .action-icon svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   nav { display:flex; gap:8px; padding:0 16px 12px; max-width:min(1200px,98vw); margin:0 auto; }
   nav button { flex:1; padding:10px; border:0; border-radius:8px; background:var(--card); color:var(--muted); font-size:15px; cursor:pointer; }
   nav button.on { background:var(--accent); color:#fff; }
   main { max-width: 100%; margin:0 auto; padding:0 8px; width:100%; box-sizing:border-box; }
   .cam { position:relative; border-radius:12px; overflow:hidden; background:#000; width:100%; aspect-ratio:4/3; height: min(calc(100vw - 16px) * 3 / 4, 72dvh); max-height: 75dvh; }
-  video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+  video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); clip-path:ellipse(min(27%, 150px) 39% at 50% 50%); }
+  .face-guide { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .face-guide::before { content:""; width:min(54%, 300px); height:78%; border:3px solid rgba(255,255,255,.9); border-radius:50%; box-shadow:0 0 18px rgba(255,255,255,.35); }
+  .face-guide-label { position:absolute; bottom:52px; left:50%; transform:translateX(-50%); max-width:calc(100% - 32px); padding:7px 12px; border-radius:999px; background:rgba(15,23,42,.78); color:#fff; text-align:center; font-size:13px; white-space:nowrap; }
   #badge { position:absolute; left:10px; right:10px; bottom:10px; padding:8px 12px; border-radius:8px; background:rgba(15,23,42,.85); color:#fff; text-align:center; font-size:14px; }
   #badge.ok { background:rgba(21,128,61,.95); } #badge.warn { background:rgba(245,158,11,.9); color:#000; } #badge.bad { background:rgba(185,28,28,.95); }
   #result { margin-top:14px; padding:18px; border-radius:12px; background:var(--card); text-align:center; min-height:84px; }
   #result .type { font-size:34px; font-weight:700; }
   #result .IN { color:var(--ok); } #result .OUT { color:var(--warn); } #result .ERR { color:var(--bad); font-size:18px; }
   #result .name { font-size:20px; margin-top:4px; } #result .time { color:var(--muted); margin-top:2px; }
-  #gps { margin-top:10px; font-size:13px; color:var(--muted); text-align:center; }
+  .gps-status { margin-top:10px; font-size:13px; color:var(--muted); text-align:center; }
   .form { margin-top:14px; background:var(--card); padding:16px; border-radius:12px; display:grid; gap:10px; }
   .form input { padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:15px; }
   .form button { padding:12px; border:0; border-radius:8px; background:var(--enroll); color:#fff; font-size:16px; font-weight:600; cursor:pointer; }
@@ -52,10 +64,35 @@
   .back { border:0; background:var(--card); color:var(--text); padding:8px 12px; border-radius:8px; font-size:14px; cursor:pointer; }
   #home { max-width:520px; margin:0 auto; padding:24px 16px; display:grid; gap:14px; }
   #home .lead { text-align:center; color:var(--muted); margin:0 0 6px; }
-  .choice { display:flex; flex-direction:column; gap:4px; padding:28px 20px; border:0; border-radius:14px; color:#fff; cursor:pointer; text-align:left; }
+  .choice { display:flex; align-items:center; gap:16px; padding:20px; border:0; border-radius:14px; color:#fff; cursor:pointer; text-align:left; }
   .choice.scan { background:var(--accent); } .choice.enroll { background:var(--enroll); }
-  .choice .big { font-size:26px; font-weight:700; } .choice .sub { font-size:14px; opacity:.85; }
+  .choice-copy { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .choice .big { font-size:26px; font-weight:700; white-space:nowrap; } .choice .sub { font-size:14px; opacity:.85; white-space:nowrap; }
+  .scan-visual { position:relative; display:block; flex:none; width:56px; height:56px; color:#fff; }
+  .scan-visual svg { display:block; width:100%; height:100%; }
+  .scan-line { position:absolute; left:11px; right:11px; top:9px; height:2px; border-radius:2px; background:#67f5e5; box-shadow:0 0 8px #67f5e5; animation:faceScanSweep 1.8s ease-in-out infinite alternate; }
+  #chooseScan:disabled .scan-line { animation-play-state:paused; }
+  #chooseEnroll:disabled .scan-line { animation-play-state:paused; }
+  @keyframes faceScanSweep { from { top:9px; } to { top:45px; } }
+  .action-icon { flex:none; margin-right:8px; }
+  .face-scan-icon { position:relative; }
+  .face-scan-icon svg { width:22px; height:22px; }
+  .face-scan-icon::after { content:""; position:absolute; left:3px; right:3px; top:4px; height:2px; border-radius:2px; background:#67f5e5; box-shadow:0 0 6px #67f5e5; }
+  #identitySubmit .face-scan-icon::after, #btnEnroll:not(.is-saving) .face-scan-icon::after { animation:actionScanSweep 1.5s ease-in-out infinite alternate; }
+  @keyframes actionScanSweep { to { top:16px; } }
+  #btnEnroll .face-scan-icon::before { content:""; position:absolute; inset:2px; border:2px solid currentColor; border-radius:50%; opacity:0; transform:scale(.5); }
+  #btnEnroll.is-saving .face-scan-icon::after { animation:none; opacity:0; }
+  #btnEnroll.is-saving .face-scan-icon::before { animation:saveFlash .65s ease-out both; }
+  @keyframes saveFlash { 30% { opacity:.9; transform:scale(.65); } 100% { opacity:0; transform:scale(1.45); } }
+  .back-icon { width:16px; height:16px; vertical-align:-3px; margin-right:4px; }
+  #btnBack:not(:disabled):hover .back-icon { animation:backArrowNudge .45s ease; }
+  @keyframes backArrowNudge { 50% { transform:translateX(-5px); } }
   .choice:disabled { opacity:.5; cursor:wait; }
+  button { transition:transform .18s ease, box-shadow .18s ease, filter .18s ease; }
+  button:not(:disabled):hover { transform:translateY(-2px); filter:brightness(1.08); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+  button:not(:disabled):active { transform:translateY(0) scale(.97); filter:brightness(.96); box-shadow:none; }
+  button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+  button:disabled { cursor:not-allowed; }
   #homeMsg { text-align:center; font-size:14px; color:var(--muted); min-height:20px; }
   #prompt { position:absolute; left:10px; right:10px; top:10px; padding:12px; border-radius:10px; background:rgba(59,130,246,.92); text-align:center; font-size:20px; font-weight:700; }
   [hidden] { display:none !important; }
@@ -73,30 +110,39 @@
   .modal.success .modal-title { color:var(--ok); }
   .modal.warning .modal-title { color:var(--warn); }
   .modal-message { font-size:16px; color:var(--text); margin:0 0 24px; line-height:1.5; }
-  .modal-btn { padding:12px 32px; border:0; border-radius:10px; background:var(--accent); color:#fff; font-size:16px; font-weight:600; cursor:pointer; transition:transform 0.2s; }
-  .modal-btn:hover { transform:scale(1.05); }
+  .modal-btn { padding:12px 32px; border:0; border-radius:10px; background:var(--accent); color:#fff; font-size:16px; font-weight:600; cursor:pointer; }
   .modal.success .modal-btn { background:var(--ok); }
   .modal.warning .modal-btn { background:var(--warn); color:#000; }
   @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
   @keyframes scaleIn { from { transform:scale(0.8); opacity:0; } to { transform:scale(1); opacity:1; } }
   @keyframes bounce { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+  @media (prefers-reduced-motion:reduce) {
+    button { transition:none; }
+    button:not(:disabled):hover, button:not(:disabled):active { transform:none; }
+    .scan-line { animation:none; top:27px; }
+    .theme-thumb { transition:none; }
+    #btnBack:not(:disabled):hover .back-icon, .face-scan-icon::after, #btnEnroll.is-saving .face-scan-icon::before { animation:none; }
+    .scan-line { animation:none; top:27px; }
+  }
   #confetti-canvas { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1001; }
 </style>
 </head>
 <body>
-<header><button id="btnBack" class="back" hidden>&larr; Back</button><h1>GSDC In &amp; Out</h1><div class="hright"><div id="clock"></div><button id="btnTheme" type="button" aria-label="Switch dark / light mode"></button></div></header>
+<header><div class="hleft"><button id="btnBack" class="back" hidden><svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Back</button><h1>GSDC In &amp; Out</h1></div><div id="clock"></div><div class="hright"><button id="btnTheme" type="button" aria-label="Switch dark / light mode"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2m16 0h2"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5Z"/></svg><span class="theme-thumb"></span></span><span id="themeLabel"></span></button></div></header>
+
+<div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div>
 
 <section id="home">
   <p class="lead">What would you like to do?</p>
-  <button class="choice scan" id="chooseScan"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></button>
-  <button class="choice enroll" id="chooseEnroll"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></button>
+  <button class="choice scan" id="chooseScan"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M20 28c0-8 5-13 12-13s12 5 12 13v5c0 9-5 15-12 15s-12-6-12-15v-5Z" stroke="currentColor" stroke-width="2.5"/><path d="M25 29h.1M39 29h.1M28 39c2.5 2 5.5 2 8 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></span></button>
+  <button class="choice enroll" id="chooseEnroll"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="28" cy="25" r="7" stroke="currentColor" stroke-width="2.5"/><path d="M15 46v-3a9 9 0 0 1 9-9h8M43 25v13m-6.5-6.5h13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></span></button>
   <div id="homeMsg">Loading…</div>
 </section>
-<div id="gps">GPS: waiting…</div>
 
 <main id="app" hidden>
   <div class="cam" id="camPane">
     <video id="video" autoplay muted playsinline></video>
+    <div class="face-guide" aria-hidden="true"><span class="face-guide-label">Center your face inside the oval</span></div>
     <div id="prompt" hidden></div>
     <div id="badge">Starting…</div>
   </div>
@@ -106,7 +152,7 @@
       <label for="identityInput">Enter your employee ID before the face scan:</label>
       <input id="identityInput" autocomplete="off" required aria-describedby="identityError">
       <div id="identityError" aria-live="polite"></div>
-      <button id="identitySubmit" type="submit">Continue to face scan</button>
+      <button id="identitySubmit" type="submit"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Continue to face scan</button>
     </form>
     <div id="scanActions" class="form" hidden>
       <div id="scanEmployee" aria-live="polite"></div>
@@ -121,8 +167,7 @@
       <input id="pin" type="password" placeholder="Admin PIN" autocomplete="off">
       <input id="empId" placeholder="Employee ID">
       <input id="empName" placeholder="Full name (First Name Middle Name Last Name)">
-      <div style="font-size:12px; color:var(--muted); text-align:center;">Please enter your full name as: First Name Middle Name Last Name</div>
-      <button id="btnEnroll">Capture face &amp; save</button>
+      <button id="btnEnroll"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Capture face &amp; save</button>
       <div id="enrollMsg">Face the camera, then press the button.</div>
     </div>
   </section>
@@ -133,6 +178,7 @@
 <script>
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
 const $ = id => document.getElementById(id);
+const setGPSStatus = text => { $('gps').textContent = text; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
@@ -190,7 +236,9 @@ function showModal(opts) {
 /* Dark / light mode */
 function paintThemeBtn() {
   const dark = document.documentElement.dataset.theme === 'dark';
-  $('btnTheme').textContent = dark ? '☀️ Light' : '🌙 Dark';
+  $('btnTheme').classList.toggle('is-dark', dark);
+  $('themeLabel').textContent = dark ? 'Light' : 'Dark';
+  $('btnTheme').setAttribute('aria-label', 'Switch to ' + (dark ? 'light' : 'dark') + ' mode');
 }
 $('btnTheme').onclick = () => {
   const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -262,16 +310,46 @@ $('btnBack').onclick = goHome;
 
 /* GPS */
 function startGPS() {
-  if (!navigator.geolocation) { $('gps').textContent = 'GPS not supported'; return; }
+  if (!navigator.geolocation) { setGPSStatus('GPS not supported'); return; }
   if (gpsWatch !== null) return;
   gpsWatch = navigator.geolocation.watchPosition(
     p => {
       pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
-      $('gps').textContent = 'GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)';
+      setGPSStatus('GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)');
     },
-    e => { $('gps').textContent = 'GPS unavailable: ' + e.message; },
+    e => { setGPSStatus('GPS unavailable: ' + e.message); },
     { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
   );
+}
+function getGPSForScan() {
+  if (!navigator.geolocation) {
+    const message = 'Location is unavailable. Enable GPS/location services to record attendance.';
+    setGPSStatus('GPS unavailable');
+    return Promise.reject(new Error(message));
+  }
+  setGPSStatus('GPS: getting a fresh location fix…');
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      p => {
+        const location = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+        if (![location.lat, location.lng, location.acc].every(Number.isFinite)) {
+          reject(new Error('Could not get valid GPS details. Please try again.'));
+          return;
+        }
+        pos = location;
+        setGPSStatus('GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)');
+        resolve(location);
+      },
+      e => {
+        const message = e.code === 1 ? 'Location permission was denied.' :
+          e.code === 2 ? 'Your current location could not be determined.' :
+          e.code === 3 ? 'Timed out while getting your location.' : e.message || 'Location could not be retrieved.';
+        setGPSStatus('GPS unavailable: ' + message);
+        reject(new Error(message + ' Enable location access and try the scan again.'));
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+    );
+  });
 }
 /* Load employee names and face descriptors */
 async function loadEmployees() {
@@ -445,10 +523,13 @@ function showResult(r) {
 }
 
 async function submit(id, dist, my) {
-  badge('Recording…');
   try {
+    badge('Getting GPS location…');
+    const location = await getGPSForScan();
+    if (my !== session) return false;
+    badge('Recording…');
     const r = await gs('recordScan', id,
-      pos ? pos.lat : null, pos ? pos.lng : null, pos ? pos.acc : null, dist);
+      location.lat, location.lng, location.acc, dist);
     return my === session ? showResult(r) : false;
   } catch (e) {
     if (my === session) showResult({ ok: false, message: e.message || String(e) });
@@ -578,17 +659,26 @@ $('cancelScan').onclick = () => {
 };
 
 /* Enrollment (with liveness + duplicate ID / name / face checks) */
+const normalizeEmployeeId = value => value.replace(/\s+/g, '').toLocaleUpperCase();
+const properCaseName = value => value.replace(/\s+/g, ' ').trim().toLocaleLowerCase().replace(/(^|[\s'-])(\p{L})/gu,
+  (_, separator, letter) => separator + letter.toLocaleUpperCase());
 const normName = n => n.toLowerCase().replace(/\s+/g, ' ').trim();
 $('btnEnroll').onclick = async () => {
-  const pin = $('pin').value, id = $('empId').value.trim(), name = $('empName').value.trim();
+  const pin = $('pin').value;
+  const id = normalizeEmployeeId($('empId').value);
+  const name = properCaseName($('empName').value);
+  $('empId').value = id;
+  $('empName').value = name;
   const msg = t => { $('enrollMsg').textContent = t; };
   if (!pin || !id || !name) { msg('Please fill in PIN, ID and name.'); return; }
   const my = session;
   busy = true; $('btnEnroll').disabled = true;
+  $('btnEnroll').classList.remove('is-saving');
+  $('btnEnroll').classList.add('is-capturing');
   try {
     msg('Checking for duplicates…');
     await loadEmployees(); // latest list, in case another device enrolled someone
-    const idTaken = Object.keys(names).find(k => k.toLowerCase() === id.toLowerCase());
+    const idTaken = Object.keys(names).find(k => normalizeEmployeeId(k) === id);
     if (idTaken) { 
       const msgTxt = 'Employee ID ' + idTaken + ' is already enrolled (' + names[idTaken] + ').';
       msg(msgTxt); 
@@ -627,6 +717,8 @@ $('btnEnroll').onclick = async () => {
       }
     }
 
+    $('btnEnroll').classList.remove('is-capturing');
+    $('btnEnroll').classList.add('is-saving');
     msg('Saving…');
     const r = await gs('enrollEmployee', pin, id, name, avg);
     msg(r.message);
@@ -658,6 +750,7 @@ $('btnEnroll').onclick = async () => {
   } finally {
     say('');
     busy = false; $('btnEnroll').disabled = false;
+    $('btnEnroll').classList.remove('is-capturing', 'is-saving');
   }
 };
 
