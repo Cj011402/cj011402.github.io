@@ -95,7 +95,20 @@
   button:not(:disabled):active { transform:translateY(0) scale(.97); filter:brightness(.96); box-shadow:none; }
   button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
   button:disabled { cursor:not-allowed; }
-  #homeMsg { text-align:center; font-size:14px; color:var(--muted); min-height:20px; }
+  #homeMsg { display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; font-size:14px; color:var(--muted); min-height:20px; }
+  .loading-spinner { position:relative; display:grid; place-items:center; width:36px; height:36px; flex:none; }
+  .loading-spinner::before { content:""; position:absolute; inset:1px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:homeLoadingSpin 1.2s linear infinite; }
+  .loading-spinner svg { width:22px; height:22px; overflow:visible; color:var(--accent); }
+  .loading-spinner .face-outline { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; animation:homeFacePulse 1.6s ease-in-out infinite; }
+  .loading-spinner .face-scan { position:absolute; left:10px; right:10px; top:50%; height:2px; border-radius:2px; background:var(--ok); box-shadow:0 0 5px var(--ok); animation:homeFaceScan 1.5s ease-in-out infinite alternate; }
+  .loading-dots { display:inline-flex; gap:3px; margin-left:2px; }
+  .loading-dots i { width:4px; height:4px; border-radius:50%; background:currentColor; animation:homeDotBounce 1s ease-in-out infinite; }
+  .loading-dots i:nth-child(2) { animation-delay:.15s; }
+  .loading-dots i:nth-child(3) { animation-delay:.3s; }
+  @keyframes homeLoadingSpin { to { transform:rotate(360deg); } }
+  @keyframes homeFaceScan { from { transform:translateY(-5px); } to { transform:translateY(5px); } }
+  @keyframes homeFacePulse { 50% { opacity:.55; } }
+  @keyframes homeDotBounce { 0%,60%,100% { transform:translateY(0); opacity:.45; } 30% { transform:translateY(-4px); opacity:1; } }
   #prompt { position:absolute; left:10px; right:10px; top:10px; padding:12px; border-radius:10px; background:rgba(59,130,246,.92); text-align:center; font-size:20px; font-weight:700; }
   [hidden] { display:none !important; }
   @media (max-width:600px) {
@@ -187,6 +200,7 @@
     button { transition:none; }
     button:not(:disabled):hover, button:not(:disabled):active { transform:none; }
     .scan-line { animation:none; top:27px; }
+    .loading-spinner::before, .loading-spinner .face-outline, .loading-spinner .face-scan, .loading-dots i { animation:none; }
     .theme-thumb { transition:none; }
     #btnBack:not(:disabled):hover .back-icon, .face-scan-icon::after, #btnEnroll.is-saving .face-scan-icon::before { animation:none; }
     .scan-line { animation:none; top:27px; }
@@ -203,7 +217,7 @@
   <p class="lead">What would you like to do?</p>
   <button class="choice scan" id="chooseScan"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M20 28c0-8 5-13 12-13s12 5 12 13v5c0 9-5 15-12 15s-12-6-12-15v-5Z" stroke="currentColor" stroke-width="2.5"/><path d="M25 29h.1M39 29h.1M28 39c2.5 2 5.5 2 8 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></span></button>
   <button class="choice enroll" id="chooseEnroll"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="28" cy="25" r="7" stroke="currentColor" stroke-width="2.5"/><path d="M15 46v-3a9 9 0 0 1 9-9h8M43 25v13m-6.5-6.5h13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></span></button>
-  <div id="homeMsg">Loading…</div>
+  <div id="homeMsg" role="status" aria-live="polite"><span id="homeSpinner" class="loading-spinner" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="face-outline" d="M5 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H7a2 2 0 0 1-2-2v-2M8 10v2m8-2v2m-8 3c2.5 2 5.5 2 8 0"/></svg><span class="face-scan"></span></span><span id="homeMsgText">Loading…</span><span id="homeDots" class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
 </section>
 
 <main id="app" hidden>
@@ -267,6 +281,11 @@ async function gs(fn, ...args) {
 }
 function badge(text, cls) { const b = $('badge'); b.textContent = text; b.className = cls || ''; }
 function say(text) { const p = $('prompt'); p.textContent = text || ''; p.hidden = !text; }
+function setHomeStatus(text, loading) {
+  $('homeMsgText').textContent = text;
+  $('homeSpinner').hidden = !loading;
+  $('homeDots').hidden = !loading;
+}
 
 /* Confetti */
 function shootConfetti() {
@@ -848,18 +867,18 @@ $('btnEnroll').onclick = async () => {
   loadBlinker().catch(e => console.warn('MediaPipe blink detector unavailable, using fallback', e));
   startGPS();
   try {
-    $('homeMsg').textContent = 'Loading face models…';
+    setHomeStatus('Loading face models…', true);
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
     ]);
-    $('homeMsg').textContent = 'Loading employees…';
+    setHomeStatus('Loading employees…', true);
     await loadEmployees();
-    $('homeMsg').textContent = '';
+    setHomeStatus('', false);
     $('chooseScan').disabled = $('chooseEnroll').disabled = false;
   } catch (e) {
-    $('homeMsg').textContent = 'Error: ' + (e.message || e);
+    setHomeStatus('Error: ' + (e.message || e), false);
   }
 })();
 </script>
