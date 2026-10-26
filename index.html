@@ -269,7 +269,6 @@ const setGPSStatus = text => { $('gps').textContent = text; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
-const ENROLL_DUPLICATE_THRESHOLD = 0.4;
 
 let enrollmentMatcher = null, names = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5 };
 let mode = 'home', busy = false, pos = null, activeScanId = null;
@@ -494,7 +493,7 @@ async function loadEmployees() {
       employeeDescriptors.set(e.id, descriptor);
       return new faceapi.LabeledFaceDescriptors(e.id, [descriptor]);
     });
-    enrollmentMatcher = new faceapi.FaceMatcher(labeled, ENROLL_DUPLICATE_THRESHOLD);
+    enrollmentMatcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
   }
 }
 
