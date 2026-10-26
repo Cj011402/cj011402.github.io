@@ -84,8 +84,12 @@
   @keyframes actionScanSweep { to { top:16px; } }
   #btnEnroll .face-scan-icon::before { content:""; position:absolute; inset:2px; border:2px solid currentColor; border-radius:50%; opacity:0; transform:scale(.5); }
   #btnEnroll.is-saving .face-scan-icon::after { animation:none; opacity:0; }
-  #btnEnroll.is-saving .face-scan-icon::before { animation:saveFlash .65s ease-out both; }
-  @keyframes saveFlash { 30% { opacity:.9; transform:scale(.65); } 100% { opacity:0; transform:scale(1.45); } }
+  #btnEnroll.is-saving .face-scan-icon::before { inset:2px; border-color:rgba(255,255,255,.35); border-top-color:#fff; opacity:1; transform:none; animation:saveSpin .8s linear infinite; }
+  @keyframes saveSpin { to { transform:rotate(360deg); } }
+  #badge.saving { display:flex; align-items:center; justify-content:center; gap:9px; font-weight:700; }
+  #badge.saving::before { content:""; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; flex:none; animation:saveSpin .8s linear infinite; }
+  #prompt.saving { display:flex; align-items:center; justify-content:center; gap:10px; }
+  #prompt.saving::before { content:""; width:20px; height:20px; border:3px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; flex:none; animation:saveSpin .8s linear infinite; }
   .back-icon { width:16px; height:16px; vertical-align:-3px; margin-right:4px; }
   #btnBack:not(:disabled):hover .back-icon { animation:backArrowNudge .45s ease; }
   @keyframes backArrowNudge { 50% { transform:translateX(-5px); } }
@@ -96,6 +100,8 @@
   button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
   button:disabled { cursor:not-allowed; }
   #homeMsg { display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; font-size:14px; color:var(--muted); min-height:20px; }
+  #homeMsg:has(#retryGPS:not([hidden])) { flex-direction:column; }
+  #retryGPS { padding:8px 14px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
   .loading-spinner { position:relative; display:grid; place-items:center; width:36px; height:36px; flex:none; }
   .loading-spinner::before { content:""; position:absolute; inset:1px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:homeLoadingSpin 1.2s linear infinite; }
   .loading-spinner svg { width:22px; height:22px; overflow:visible; color:var(--accent); }
@@ -202,7 +208,7 @@
     .scan-line { animation:none; top:27px; }
     .loading-spinner::before, .loading-spinner .face-outline, .loading-spinner .face-scan, .loading-dots i { animation:none; }
     .theme-thumb { transition:none; }
-    #btnBack:not(:disabled):hover .back-icon, .face-scan-icon::after, #btnEnroll.is-saving .face-scan-icon::before { animation:none; }
+    #btnBack:not(:disabled):hover .back-icon, .face-scan-icon::after, #btnEnroll.is-saving .face-scan-icon::before, #badge.saving::before, #prompt.saving::before { animation:none; }
     .scan-line { animation:none; top:27px; }
   }
   #confetti-canvas { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1001; }
@@ -217,14 +223,14 @@
   <p class="lead">What would you like to do?</p>
   <button class="choice scan" id="chooseScan"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M20 28c0-8 5-13 12-13s12 5 12 13v5c0 9-5 15-12 15s-12-6-12-15v-5Z" stroke="currentColor" stroke-width="2.5"/><path d="M25 29h.1M39 29h.1M28 39c2.5 2 5.5 2 8 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></span></button>
   <button class="choice enroll" id="chooseEnroll"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="28" cy="25" r="7" stroke="currentColor" stroke-width="2.5"/><path d="M15 46v-3a9 9 0 0 1 9-9h8M43 25v13m-6.5-6.5h13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></span></button>
-  <div id="homeMsg" role="status" aria-live="polite"><span id="homeSpinner" class="loading-spinner" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="face-outline" d="M5 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H7a2 2 0 0 1-2-2v-2M8 10v2m8-2v2m-8 3c2.5 2 5.5 2 8 0"/></svg><span class="face-scan"></span></span><span id="homeMsgText">Loading…</span><span id="homeDots" class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+  <div id="homeMsg" role="status" aria-live="polite"><span id="homeSpinner" class="loading-spinner" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="face-outline" d="M5 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H7a2 2 0 0 1-2-2v-2M8 10v2m8-2v2m-8 3c2.5 2 5.5 2 8 0"/></svg><span class="face-scan"></span></span><span id="homeMsgText">Loading…</span><span id="homeDots" class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span><button type="button" id="retryGPS" hidden>Retry GPS location</button></div>
 </section>
 
 <main id="app" hidden>
   <div class="cam" id="camPane">
     <video id="video" autoplay muted playsinline></video>
     <div class="face-guide" aria-hidden="true"><span class="face-guide-label">Center your face inside the oval</span></div>
-    <div id="prompt" hidden></div>
+    <div id="prompt" role="status" aria-live="polite" hidden></div>
     <div id="badge">Starting…</div>
   </div>
 
@@ -248,8 +254,8 @@
       <input id="pin" type="password" placeholder="Admin PIN" autocomplete="off">
       <input id="empId" placeholder="Employee ID">
       <input id="empName" placeholder="Full name (First Name Middle Name Last Name)">
-      <button id="btnEnroll" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
-      <div id="enrollMsg">Face the camera, then press the button.</div>
+      <button id="btnEnroll" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span><span id="enrollButtonLabel">Face Scan</span></button>
+      <div id="enrollMsg" role="status" aria-live="polite">Face the camera, then press the button.</div>
     </div>
   </section>
 </main>
@@ -267,6 +273,7 @@ const ENROLL_DUPLICATE_THRESHOLD = 0.4;
 
 let enrollmentMatcher = null, names = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5 };
 let mode = 'home', busy = false, pos = null, activeScanId = null;
+let appDataReady = false, homeGPSReady = false, homeGPSBusy = false;
 
 // ====== SET THESE TWO ======
 const API_URL = 'https://script.google.com/macros/s/AKfycbwdfR3fnuDQpwsYbkpax_MW2oDCn8ypL5_wjkTreKf6X6fHjLHi1CmeoUyu8ZHhf2bF/exec'; // ends with /exec
@@ -280,11 +287,39 @@ async function gs(fn, ...args) {
   return res.json();
 }
 function badge(text, cls) { const b = $('badge'); b.textContent = text; b.className = cls || ''; }
-function say(text) { const p = $('prompt'); p.textContent = text || ''; p.hidden = !text; }
+function say(text, saving) {
+  const p = $('prompt');
+  p.textContent = text || '';
+  p.hidden = !text;
+  p.classList.toggle('saving', !!saving);
+}
 function setHomeStatus(text, loading) {
   $('homeMsgText').textContent = text;
   $('homeSpinner').hidden = !loading;
   $('homeDots').hidden = !loading;
+}
+function updateHomeActions() {
+  $('chooseScan').disabled = !appDataReady || !homeGPSReady || homeGPSBusy;
+  $('chooseEnroll').disabled = !appDataReady;
+}
+async function requestHomeGPS() {
+  if (homeGPSBusy) return;
+  homeGPSBusy = true;
+  homeGPSReady = false;
+  setHomeStatus('Getting GPS location…', true);
+  $('retryGPS').hidden = true;
+  updateHomeActions();
+  try {
+    await getGPSForScan();
+    homeGPSReady = true;
+    setHomeStatus('', false);
+  } catch (e) {
+    setHomeStatus('Location is required before Scan. ' + (e.message || String(e)), false);
+    $('retryGPS').hidden = false;
+  } finally {
+    homeGPSBusy = false;
+    updateHomeActions();
+  }
 }
 
 /* Confetti */
@@ -395,8 +430,11 @@ function goHome() {
   $('app').hidden = true; $('home').hidden = false; $('btnBack').hidden = true;
   $('appTitle').hidden = false;
 }
-$('chooseScan').onclick = () => openModule('scan');
+$('chooseScan').onclick = () => {
+  if (homeGPSReady) openModule('scan');
+};
 $('chooseEnroll').onclick = () => openModule('enroll');
+$('retryGPS').onclick = requestHomeGPS;
 $('btnBack').onclick = goHome;
 
 /* GPS */
@@ -418,7 +456,6 @@ function getGPSForScan() {
     setGPSStatus('GPS unavailable');
     return Promise.reject(new Error(message));
   }
-  setGPSStatus('GPS: getting a fresh location fix…');
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
       p => {
@@ -615,16 +652,19 @@ function showResult(r) {
 
 async function submit(id, dist, my) {
   try {
-    badge('Getting GPS location…');
+    const savingMessage = 'Saving record…';
+    badge(savingMessage, 'saving');
+    say(savingMessage + ' Please wait.', true);
     const location = await getGPSForScan();
     if (my !== session) return false;
-    badge('Recording…');
     const r = await gs('recordScan', id,
       location.lat, location.lng, location.acc, dist);
     return my === session ? showResult(r) : false;
   } catch (e) {
     if (my === session) showResult({ ok: false, message: e.message || String(e) });
     return false;
+  } finally {
+    if (my === session) say('');
   }
 }
 
@@ -776,7 +816,10 @@ $('btnEnroll').onclick = async () => {
   const name = properCaseName($('empName').value);
   $('empId').value = id;
   $('empName').value = name;
-  const msg = t => { $('enrollMsg').textContent = t; };
+  const msg = (text, saving = false) => {
+    $('enrollMsg').textContent = text;
+    $('enrollMsg').classList.toggle('is-saving', saving);
+  };
   if (!pin || !id || !name) { msg('Please fill in PIN, ID and name.'); return; }
   const my = session;
   busy = true; $('btnEnroll').disabled = true;
@@ -803,7 +846,7 @@ $('btnEnroll').onclick = async () => {
     msg('Liveness check — follow the instructions on the camera');
     if (!await liveness(my)) { say(''); msg('Liveness check failed. The real person must be in front of the camera.'); return; }
 
-    msg('Capturing… hold still and look at the camera');
+    msg('Preparing enrollment… hold still and look at the camera');
     const samples = [];
     for (let i = 0; i < 12 && samples.length < 5; i++) {
       const d = await faceapi.detectSingleFace($('video'), detOpts()).withFaceLandmarks().withFaceDescriptor();
@@ -826,7 +869,10 @@ $('btnEnroll').onclick = async () => {
 
     $('btnEnroll').classList.remove('is-capturing');
     $('btnEnroll').classList.add('is-saving');
-    msg('Saving…');
+    $('btnEnroll').setAttribute('aria-busy', 'true');
+    $('enrollButtonLabel').textContent = 'Saving enrollment…';
+    msg('');
+    say('Saving enrollment… Please wait.', true);
     const r = await gs('enrollEmployee', pin, id, name, avg);
     msg(r.message);
     if (r.ok) { 
@@ -858,12 +904,14 @@ $('btnEnroll').onclick = async () => {
     say('');
     busy = false; updateEnrollButton();
     $('btnEnroll').classList.remove('is-capturing', 'is-saving');
+    $('btnEnroll').removeAttribute('aria-busy');
+    $('enrollButtonLabel').textContent = 'Face Scan';
   }
 };
 
 /* Init: load models + employees on the home screen; camera starts only after a choice */
 (async function init() {
-  $('chooseScan').disabled = $('chooseEnroll').disabled = true;
+  updateHomeActions();
   loadBlinker().catch(e => console.warn('MediaPipe blink detector unavailable, using fallback', e));
   startGPS();
   try {
@@ -875,8 +923,10 @@ $('btnEnroll').onclick = async () => {
     ]);
     setHomeStatus('Loading employees…', true);
     await loadEmployees();
-    setHomeStatus('', false);
-    $('chooseScan').disabled = $('chooseEnroll').disabled = false;
+    appDataReady = true;
+    updateHomeActions();
+    await requestHomeGPS();
+    updateHomeActions();
   } catch (e) {
     setHomeStatus('Error: ' + (e.message || e), false);
   }
