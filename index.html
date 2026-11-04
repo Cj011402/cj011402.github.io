@@ -57,6 +57,7 @@
   .gps-status { margin-top:10px; font-size:13px; color:var(--muted); text-align:center; }
   .form { margin-top:14px; background:var(--card); padding:clamp(12px,3vw,20px); border-radius:12px; display:grid; gap:clamp(8px,2vw,12px); min-width:0; }
   .form input { width:100%; min-width:0; padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:clamp(14px,3.8vw,16px); }
+  .form input[readonly] { opacity:.7; cursor:not-allowed; }
   #enrollPane input::placeholder { font-size:clamp(10px,3.6vw,14px); }
   .form button { width:100%; min-width:0; padding:12px; border:0; border-radius:8px; background:var(--enroll); color:#fff; font-size:clamp(14px,4vw,16px); font-weight:600; cursor:pointer; }
   .identity-form { margin-top:10px; }
@@ -252,9 +253,11 @@
 
   <section id="enrollPane" hidden>
     <div class="form">
+      <input id="empId" placeholder="Employee ID" autocomplete="off">
+      <input id="empFirst" placeholder="First Name" autocomplete="off">
+      <input id="empMiddle" placeholder="Middle Name (leave blank if none)" autocomplete="off">
+      <input id="empLast" placeholder="Last Name" autocomplete="off">
       <input id="pin" type="password" placeholder="Admin PIN" autocomplete="off">
-      <input id="empId" placeholder="Employee ID">
-      <input id="empName" placeholder="Full name (First Name Middle Name Last Name)">
       <button id="btnEnroll" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span><span id="enrollButtonLabel">Face Scan</span></button>
       <div id="enrollMsg" role="status" aria-live="polite">Face the camera, then press the button.</div>
     </div>
@@ -271,7 +274,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
 
-let enrollmentMatcher = null, names = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5 };
+let enrollmentMatcher = null, names = {}, employeeDetails = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5 };
 let mode = 'home', busy = false, pos = null, activeScanId = null;
 let appDataReady = false, homeGPSReady = false, homeGPSBusy = false;
 
@@ -284,8 +287,19 @@ const API_KEY = 'x7Kp29qLmA';               // same as API_KEY in the Config tab
 async function gs(fn, ...args) {
   // No Content-Type header on purpose: keeps it a "simple" request so Apps Script accepts it from another site.
   const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ key: API_KEY, fn: fn, args: args }) });
-  if (!res.ok) throw new Error('Server error ' + res.status);
-  return res.json();
+  const body = await res.text();
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch (e) {
+    const detail = new DOMParser().parseFromString(body, 'text/html').body.textContent
+      .replace(/\s+/g, ' ').trim().slice(0, 300);
+    throw new Error('Apps Script returned HTML instead of JSON. ' +
+      (detail || 'Check that the web app deployment is valid and accessible.') +
+      ' Deploy a new version of the Apps Script and verify its /exec URL.');
+  }
+  if (!res.ok) throw new Error(data.message || 'Server error ' + res.status);
+  return data;
 }
 function badge(text, cls) { const b = $('badge'); b.textContent = text; b.className = cls || ''; }
 function say(text, saving) {
@@ -409,6 +423,7 @@ async function openModule(m) {
   updateIdentitySubmit();
   $('identityError').textContent = '';
   $('enrollMsg').textContent = 'Face the camera, then press the button.';
+  if (m === 'enroll') { setNameLock(false); autoFilledId = null; syncKnownEmployee(); }
   say(''); busy = false;
   if (m === 'scan') {
     badge('Enter employee ID to begin');
@@ -480,23 +495,52 @@ function getGPSForScan() {
     );
   });
 }
+
+/* ---------- Employee names ----------
+   Sheet columns: B = "LAST, FIRST MIDDLE", F = first name, G = middle name, H = last name.
+   getBootData should return first / middle / last for every employee. Older rows that only
+   have the full name in column B are split here as a fallback. */
+function employeeParts(e) {
+  let first = String(e.first || '').trim(), middle = String(e.middle || '').trim(), last = String(e.last || '').trim();
+  if (!first && !last && e.name) {
+    const full = String(e.name).trim();
+    if (full.includes(',')) {                       // "LAST, FIRST MIDDLE"
+      const i = full.indexOf(',');
+      last = full.slice(0, i).trim();
+      const words = full.slice(i + 1).trim().split(/\s+/).filter(Boolean);
+      first = words.shift() || '';
+      middle = words.join(' ');
+    } else {                                        // older rows: "First Middle Last"
+      const words = full.split(/\s+/).filter(Boolean);
+      first = words.shift() || '';
+      last = words.length ? words.pop() : '';
+      middle = words.join(' ');
+    }
+  }
+  return { first, middle, last };
+}
+const buildFullName = (first, middle, last) => last + ', ' + [first, middle].filter(Boolean).join(' ');
+
 /* Load employee names and face descriptors */
 async function loadEmployees() {
   const boot = await gs('getBootData');
   if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
   cfg = boot.config;
   names = {};
+  employeeDetails = {};
   enrollmentMatcher = null;
   employeeDescriptors = new Map();
-  if (boot.employees.length) {
-    const labeled = boot.employees.map(e => {
-      names[e.id] = e.name;
+  const labeled = [];
+  boot.employees.forEach(e => {
+    names[e.id] = e.name;
+    employeeDetails[e.id] = employeeParts(e);
+    if (e.descriptor && e.descriptor.length === 128) {
       const descriptor = Float32Array.from(e.descriptor);
       employeeDescriptors.set(e.id, descriptor);
-      return new faceapi.LabeledFaceDescriptors(e.id, [descriptor]);
-    });
-    enrollmentMatcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
-  }
+      labeled.push(new faceapi.LabeledFaceDescriptors(e.id, [descriptor]));
+    }
+  });
+  if (labeled.length) enrollmentMatcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
 }
 
 /* ---------- Liveness check (rejects printed photos / pictures on a screen) ----------
@@ -807,41 +851,80 @@ const normalizeEmployeeId = value => value.replace(/\s+/g, '').toLocaleUpperCase
 const properCaseName = value => value.replace(/\s+/g, ' ').trim().toLocaleLowerCase().replace(/(^|[\s'-])(\p{L})/gu,
   (_, separator, letter) => separator + letter.toLocaleUpperCase());
 const normName = n => n.toLowerCase().replace(/\s+/g, ' ').trim();
+const NAME_FIELDS = ['empFirst', 'empMiddle', 'empLast'];
+const findKnownId = id => Object.keys(names).find(k => normalizeEmployeeId(k) === id);
+let autoFilledId = null;   // set while the names on screen were loaded from the database
+
+function setNameLock(locked) { NAME_FIELDS.forEach(f => { $(f).readOnly = locked; }); }
+function clearNames() { NAME_FIELDS.forEach(f => { $(f).value = ''; }); }
 function updateEnrollButton() {
-  $('btnEnroll').disabled = !['pin', 'empId', 'empName'].every(id => $(id).value.trim());
+  $('btnEnroll').disabled = !['pin', 'empId', 'empFirst', 'empLast'].every(id => $(id).value.trim());
 }
-['pin', 'empId', 'empName'].forEach(id => $(id).addEventListener('input', updateEnrollButton));
+/* If the typed employee ID is already in the database, show its stored first / middle / last
+   name (locked) so the person can go straight to the face scan. */
+function syncKnownEmployee() {
+  const id = normalizeEmployeeId($('empId').value);
+  const known = id ? findKnownId(id) : undefined;
+  const parts = known !== undefined ? employeeDetails[known] : null;
+  if (parts && (parts.first || parts.last)) {
+    $('empFirst').value = parts.first;
+    $('empMiddle').value = parts.middle;
+    $('empLast').value = parts.last;
+    setNameLock(true);
+    autoFilledId = known;
+    $('enrollMsg').textContent = 'Employee ID ' + known + ' is already in the database (' + (names[known] || buildFullName(parts.first, parts.middle, parts.last)) + '). Press Face Scan to proceed.';
+  } else if (autoFilledId) {
+    clearNames();
+    setNameLock(false);
+    autoFilledId = null;
+    $('enrollMsg').textContent = 'Face the camera, then press the button.';
+  }
+  updateEnrollButton();
+}
+['pin', 'empId', 'empFirst', 'empMiddle', 'empLast'].forEach(id => $(id).addEventListener('input', updateEnrollButton));
+$('empId').addEventListener('input', syncKnownEmployee);
+
 $('btnEnroll').onclick = async () => {
   const pin = $('pin').value;
   const id = normalizeEmployeeId($('empId').value);
-  const name = properCaseName($('empName').value);
+  let first = properCaseName($('empFirst').value);
+  let middle = properCaseName($('empMiddle').value);
+  let last = properCaseName($('empLast').value);
   $('empId').value = id;
-  $('empName').value = name;
   const msg = (text, saving = false) => {
     $('enrollMsg').textContent = text;
     $('enrollMsg').classList.toggle('is-saving', saving);
   };
-  if (!pin || !id || !name) { msg('Please fill in PIN, ID and name.'); return; }
+  if (!pin || !id || !first || !last) { msg('Please fill in PIN, ID, first name and last name.'); return; }
   const my = session;
   busy = true; $('btnEnroll').disabled = true;
   $('btnEnroll').classList.remove('is-saving');
   $('btnEnroll').classList.add('is-capturing');
   try {
-    msg('Checking for duplicates…');
+    msg('Checking the database…');
     await loadEmployees(); // latest list, in case another device enrolled someone
-    const idTaken = Object.keys(names).find(k => normalizeEmployeeId(k) === id);
-    if (idTaken) { 
-      const msgTxt = 'Employee ID ' + idTaken + ' is already enrolled (' + names[idTaken] + ').';
-      msg(msgTxt); 
-      showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
-      return; 
+
+    // Employee ID already in the database: use the stored names and go straight to the face scan
+    const knownId = findKnownId(id);
+    const stored = knownId !== undefined ? employeeDetails[knownId] : null;
+    if (stored && (stored.first || stored.last)) {
+      first = stored.first; middle = stored.middle; last = stored.last;
+      $('empFirst').value = first; $('empMiddle').value = middle; $('empLast').value = last;
+      setNameLock(true); autoFilledId = knownId;
     }
-    const nameTaken = Object.keys(names).find(k => normName(names[k]) === normName(name));
-    if (nameTaken) { 
-      const msgTxt = names[nameTaken] + ' is already enrolled under ID ' + nameTaken + '.';
-      msg(msgTxt); 
-      showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
-      return; 
+    const fullName = buildFullName(first, middle, last);   // saved in column B
+
+    if (knownId === undefined) {
+      const nameTaken = Object.keys(employeeDetails).find(k => {
+        const p = employeeDetails[k];
+        return normName(buildFullName(p.first, p.middle, p.last)) === normName(fullName);
+      });
+      if (nameTaken !== undefined) {
+        const msgTxt = names[nameTaken] + ' is already enrolled under ID ' + nameTaken + '.';
+        msg(msgTxt);
+        showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
+        return;
+      }
     }
 
     msg('Liveness check — follow the instructions on the camera');
@@ -860,11 +943,12 @@ $('btnEnroll').onclick = async () => {
 
     if (enrollmentMatcher) {
       const m = enrollmentMatcher.findBestMatch(Float32Array.from(avg));
-      if (m.label !== 'unknown') { 
+      // A match to the same employee ID is fine (face scan for an existing ID); a match to someone else is not.
+      if (m.label !== 'unknown' && m.label !== knownId) {
         const msgTxt = 'This face is already enrolled as ' + names[m.label] + ' (ID ' + m.label + ').';
-        msg(msgTxt); 
+        msg(msgTxt);
         showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
-        return; 
+        return;
       }
     }
 
@@ -874,16 +958,18 @@ $('btnEnroll').onclick = async () => {
     $('enrollButtonLabel').textContent = 'Saving enrollment…';
     msg('');
     say('Saving enrollment… Please wait.', true);
-    const r = await gs('enrollEmployee', pin, id, name, avg);
+    // name = column B ("LAST, FIRST MIDDLE"); first / middle / last = columns F / G / H
+    const r = await gs('enrollEmployee', pin, knownId !== undefined ? knownId : id, fullName, avg, first, middle, last);
     msg(r.message);
-    if (r.ok) { 
+    if (r.ok) {
       showModal({
         type: 'success',
         icon: '🎉',
         title: 'Congratulations!',
-        message: name + ' (ID: ' + id + ') has been enrolled successfully!'
+        message: fullName + ' (ID: ' + (knownId !== undefined ? knownId : id) + ') has been enrolled successfully!'
       });
-      $('empId').value = ''; $('empName').value = ''; await loadEmployees(); 
+      $('empId').value = ''; clearNames(); setNameLock(false); autoFilledId = null;
+      await loadEmployees();
     } else if (r.message && r.message.toLowerCase().includes('duplicate')) {
       showModal({
         type: 'warning',
@@ -933,15 +1019,6 @@ $('btnEnroll').onclick = async () => {
   }
 })();
 </script>
-  <canvas id="confetti-canvas"></canvas>
-  <div id="appModal" class="modal-overlay" style="display:none;">
-    <div class="modal" id="modalContent">
-      <span class="modal-icon" id="modalIcon">🎉</span>
-      <h2 class="modal-title" id="modalTitle">Success!</h2>
-      <p class="modal-message" id="modalMessage">Congratulations!</p>
-      <button class="modal-btn" id="modalBtn">OK</button>
-    </div>
-  </div>
   <canvas id="confetti-canvas"></canvas>
   <div id="appModal" class="modal-overlay" style="display:none;">
     <div class="modal" id="modalContent">
