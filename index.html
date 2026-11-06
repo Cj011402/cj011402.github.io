@@ -759,7 +759,7 @@ async function liveness(my) {
 
   const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
   const turn = async () => {
-    say('Slowly turn your head to the ' + dir); cue(dir);
+    say('Turn your head to the ' + dir); cue(dir);
     // Camera image is not mirrored: subject's left = larger ratio
     const ok = await waitFor(m => dir === 'LEFT' ? m.yaw > y0 + 0.15 : m.yaw < y0 - 0.15, 7000, my);
     if (!ok) return false;
