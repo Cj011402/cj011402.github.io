@@ -534,7 +534,8 @@ function startGPS() {
   if (gpsWatch !== null) return;
   gpsWatch = navigator.geolocation.watchPosition(
     p => {
-      pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+      //pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+      pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() };
       setGPSStatus('GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)');
     },
     e => { setGPSStatus('GPS unavailable: ' + e.message); },
@@ -543,32 +544,41 @@ function startGPS() {
 }
 function getGPSForScan() {
   if (!navigator.geolocation) {
-    const message = 'Location is unavailable. Enable GPS/location services to record attendance.';
     setGPSStatus('GPS unavailable');
-    return Promise.reject(new Error(message));
+    return Promise.reject(new Error('Location is unavailable. Enable GPS/location services to record attendance.'));
   }
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      p => {
-        const location = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
-        if (![location.lat, location.lng, location.acc].every(Number.isFinite)) {
-          reject(new Error('Could not get valid GPS details. Please try again.'));
-          return;
-        }
-        pos = location;
-        setGPSStatus('GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)');
-        resolve(location);
-      },
-      e => {
-        const message = e.code === 1 ? 'Location permission was denied.' :
-          e.code === 2 ? 'Your current location could not be determined.' :
-          e.code === 3 ? 'Timed out while getting your location.' : e.message || 'Location could not be retrieved.';
-        setGPSStatus('GPS unavailable: ' + message);
-        reject(new Error(message + ' Enable location access and try the scan again.'));
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
-    );
-  });
+  // Reuse a fix from the live GPS watch if it is less than 15 seconds old
+  if (pos && pos.t && Date.now() - pos.t < 15000) return Promise.resolve(pos);
+
+  const once = opts => new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, opts));
+  const reason = e => e.code === 1 ? 'Location permission was denied.' :
+    e.code === 2 ? 'Your current location could not be determined.' :
+    e.code === 3 ? 'Timed out while getting your location.' : e.message || 'Location could not be retrieved.';
+
+  return (async () => {
+    let p;
+    try {
+      p = await once({ enableHighAccuracy: true, maximumAge: 10000, timeout: 12000 });
+    } catch (e) {
+      if (e.code === 1) {            // permission denied: retrying won't help
+        setGPSStatus('GPS unavailable: ' + reason(e));
+        throw new Error(reason(e) + ' Enable location access and try again.');
+      }
+      try {                          // fall back to network / Wi-Fi location
+        p = await once({ enableHighAccuracy: false, maximumAge: 60000, timeout: 15000 });
+      } catch (e2) {
+        setGPSStatus('GPS unavailable: ' + reason(e2));
+        throw new Error(reason(e2) + ' Turn on Location, move near a window or outdoors, and try again.');
+      }
+    }
+    const location = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() };
+    if (![location.lat, location.lng, location.acc].every(Number.isFinite)) {
+      throw new Error('Could not get valid GPS details. Please try again.');
+    }
+    pos = location;
+    setGPSStatus('GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)');
+    return location;
+  })();
 }
 
 /* ---------- Employee names ----------
