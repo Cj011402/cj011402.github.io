@@ -61,7 +61,6 @@
   #enrollPane input::placeholder { font-size:clamp(10px,3.6vw,14px); }
   .form button { width:100%; min-width:0; padding:12px; border:0; border-radius:8px; background:var(--enroll); color:#fff; font-size:clamp(14px,4vw,16px); font-weight:600; cursor:pointer; }
   .identity-form { margin-top:10px; }
-  .identity-form button[type="button"] { background:var(--card); color:var(--text); border:1px solid var(--border); }
   #identityError { min-height:20px; color:var(--bad); text-align:center; font-size:14px; }
   .form button:disabled { opacity:.5; }
   #enrollMsg { font-size:14px; text-align:center; color:var(--muted); min-height:20px; }
@@ -163,10 +162,7 @@
   body[data-mode="scan"] #scanPane { display:flex; flex-direction:column; gap:clamp(6px,1.2dvh,10px); }
   body[data-mode="scan"] #scanActions { margin:0; padding:clamp(6px,1.2dvh,10px); gap:clamp(4px,1dvh,8px); }
   body[data-mode="scan"] #scanActions button { min-height:32px; padding:6px 8px; }
-  body[data-mode="scan"] #scanEmployee { font-size:14px; line-height:1.25; }
-  body[data-mode="scan"] #scanEmployee div + div { color:var(--muted); font-size:13px; }
-  body[data-mode="scan"] #result { flex:0 0 clamp(52px,10dvh,72px); height:clamp(52px,10dvh,72px); overflow:auto; display:flex; flex-direction:column; justify-content:center; }
-  body[data-mode="scan"] #result .type.ERR { font-size:14px; font-weight:400; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; line-height:1.25; }
+  body[data-mode="scan"] #result { display:none; }   /* results already appear in the popup */
   @media (max-height:600px) {
     body[data-mode] header { padding-top:4px; padding-bottom:4px; }
     body[data-mode] #gps { margin-top:0; margin-bottom:3px; font-size:12px; }
@@ -211,9 +207,48 @@
     .loading-spinner::before, .loading-spinner .face-outline, .loading-spinner .face-scan, .loading-dots i { animation:none; }
     .theme-thumb { transition:none; }
     #btnBack:not(:disabled):hover .back-icon, .face-scan-icon::after, #btnEnroll.is-saving .face-scan-icon::before, #badge.saving::before, #prompt.saving::before { animation:none; }
-    .scan-line { animation:none; top:27px; }
   }
   #confetti-canvas { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1001; }
+
+  /* ---------- Camera screens: two buttons (Face Scan / Edit Details) ---------- */
+  .scan-actions { grid-template-columns:1fr 1fr; }
+  .scan-actions button { display:flex; align-items:center; justify-content:center; gap:6px; }
+  .scan-actions #cancelScan, .scan-actions #editEnroll { background:var(--card); color:var(--text); border:1px solid var(--border); }
+  #retryScan .face-scan-icon::after, #retryEnroll .face-scan-icon::after { animation:actionScanSweep 1.5s ease-in-out infinite alternate; }
+  body[data-mode="enroll"] #enrollActions { margin:0; padding:clamp(6px,1.2dvh,10px); gap:clamp(4px,1dvh,8px); }
+  body[data-mode="enroll"] #enrollActions button { min-height:32px; padding:6px 8px; }
+
+  /* ---------- Keypad ---------- */
+  .keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(6px,1.4dvh,10px); }
+  body .form .keypad button { padding:0; min-height:clamp(40px,7.5dvh,58px); font-size:clamp(20px,5vw,26px); font-weight:700; background:var(--field); color:var(--text); border:1px solid var(--border); }
+  body .form .keypad button.pre { font-size:clamp(11px,3.4vw,15px); background:var(--card); border-color:var(--accent); }
+  body[data-mode="scan"] #scanPane, body[data-mode="enroll"] #enrollPane { flex:0 1 auto; min-height:0; overflow-y:auto; }
+
+  /* ---------- Liveness cues (arrows / eyes) ---------- */
+  .cue { position:absolute; z-index:3; display:flex; gap:2px; color:#67f5e5; pointer-events:none; filter:drop-shadow(0 2px 6px rgba(0,0,0,.7)); }
+  .cue svg { width:clamp(30px,8vw,46px); height:clamp(30px,8vw,46px); fill:none; stroke:currentColor; stroke-width:5; stroke-linecap:round; stroke-linejoin:round; }
+  .cue[data-k="LEFT"], .cue[data-k="RIGHT"] { top:50%; transform:translateY(-50%); }
+  .cue[data-k="LEFT"]  { left:6px; flex-direction:row-reverse; }
+  .cue[data-k="RIGHT"] { right:6px; }
+  .cue[data-k="UP"], .cue[data-k="DOWN"] { left:50%; transform:translateX(-50%); }
+  .cue[data-k="UP"]   { top:64px; flex-direction:column-reverse; }
+  .cue[data-k="DOWN"] { bottom:52px; flex-direction:column; }
+  .cue .ch { opacity:.2; animation:chev 1s ease-in-out infinite; }
+  .cue .ch:nth-child(2) { animation-delay:.2s; }
+  .cue .ch:nth-child(3) { animation-delay:.4s; }
+  .cue[data-k="LEFT"] .ch { transform:rotate(180deg); }
+  .cue[data-k="UP"] .ch { transform:rotate(-90deg); }
+  .cue[data-k="DOWN"] .ch { transform:rotate(90deg); }
+  .cue[data-k="BLINK"], .cue[data-k="STRAIGHT"] { left:50%; bottom:52px; transform:translateX(-50%); padding:8px 16px; border-radius:999px; background:rgba(15,23,42,.85); }
+  .cue .eyes { width:clamp(90px,24vw,130px); height:auto; stroke-width:3; }
+  .cue .eyes circle { fill:currentColor; }
+  .cue .eye { transform-box:fill-box; transform-origin:center; animation:eyeBlink 1.4s ease-in-out infinite; }
+  .cue .ring { animation:cuePulse 1.2s ease-in-out infinite; }
+  .cam.has-cue .face-guide-label { display:none; }
+  @keyframes chev { 50% { opacity:1; } }
+  @keyframes eyeBlink { 0%,55%,100% { transform:scaleY(1); } 70% { transform:scaleY(.08); } }
+  @keyframes cuePulse { 50% { transform:scale(1.15); } }
+  @media (prefers-reduced-motion:reduce) { .cue .ch { animation:none; opacity:1; } .cue .eye, .cue .ring { animation:none; } }
 </style>
 </head>
 <body>
@@ -234,32 +269,37 @@
     <div class="face-guide" aria-hidden="true"><span class="face-guide-label">Center your face inside the oval</span></div>
     <div id="prompt" role="status" aria-live="polite" hidden></div>
     <div id="badge">Starting…</div>
+    <div id="cue" class="cue" hidden aria-hidden="true"></div>
   </div>
 
   <section id="scanPane">
     <form id="identityForm" class="form identity-form" hidden>
       <label for="identityInput">Enter your employee ID:</label>
-      <input id="identityInput" autocomplete="off" required aria-describedby="identityError">
+      <input id="identityInput" inputmode="none" autocomplete="off" required aria-describedby="identityError">
       <div id="identityError" aria-live="polite"></div>
       <button id="identitySubmit" type="submit" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
+      <div id="keypad" class="keypad" role="group" aria-label="Employee ID keypad"></div>
     </form>
-    <div id="scanActions" class="form" hidden>
-      <div id="scanEmployee" aria-live="polite"></div>
-      <button type="button" id="retryScan">Retry face scan</button>
-      <button type="button" id="cancelScan">Cancel / enter another ID</button>
+    <div id="scanActions" class="form scan-actions" hidden>
+      <button type="button" id="retryScan"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
+      <button type="button" id="cancelScan"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>Edit Details</button>
     </div>
     <div id="result"><div style="color:var(--muted)">Look at the camera, then follow the on-screen instructions to record IN / OUT</div></div>
   </section>
 
   <section id="enrollPane" hidden>
-    <div class="form">
+    <div class="form" id="enrollForm">
       <input id="empId" placeholder="Employee ID" autocomplete="off">
       <input id="empFirst" placeholder="First Name" autocomplete="off">
       <input id="empMiddle" placeholder="Middle Name (leave blank if none)" autocomplete="off">
       <input id="empLast" placeholder="Last Name" autocomplete="off">
       <input id="pin" type="password" placeholder="Admin PIN" autocomplete="off">
       <button id="btnEnroll" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span><span id="enrollButtonLabel">Face Scan</span></button>
-      <div id="enrollMsg" role="status" aria-live="polite">Face the camera, then press the button.</div>
+      <div id="enrollMsg" role="status" aria-live="polite">Fill in the details, then press Face Scan.</div>
+    </div>
+    <div id="enrollActions" class="form scan-actions" hidden>
+      <button type="button" id="retryEnroll"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
+      <button type="button" id="editEnroll"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>Edit Details</button>
     </div>
   </section>
 </main>
@@ -302,11 +342,26 @@ async function gs(fn, ...args) {
   return data;
 }
 function badge(text, cls) { const b = $('badge'); b.textContent = text; b.className = cls || ''; }
+
+/* Visual cues shown on the camera during the liveness check */
+const CHEV = '<svg class="ch" viewBox="0 0 48 48"><path d="M16 8l16 16-16 16"/></svg>'.repeat(3);
+const CUE_HTML = {
+  LEFT: CHEV, RIGHT: CHEV, UP: CHEV, DOWN: CHEV,
+  BLINK: '<svg class="eyes" viewBox="0 0 100 40"><g class="eye"><path d="M6 20s9-13 21-13 21 13 21 13-9 13-21 13S6 20 6 20Z"/><circle cx="27" cy="20" r="6"/></g><g class="eye"><path d="M52 20s9-13 21-13 21 13 21 13-9 13-21 13S52 20 52 20Z"/><circle cx="73" cy="20" r="6"/></g></svg>',
+  STRAIGHT: '<svg class="ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="3"/><path d="M24 4v6M24 38v6M4 24h6M38 24h6"/></svg>'
+};
+function cue(kind) {
+  const c = $('cue');
+  c.hidden = !kind;
+  $('camPane').classList.toggle('has-cue', !!kind);
+  if (kind) { c.dataset.k = kind; c.innerHTML = CUE_HTML[kind]; }
+}
 function say(text, saving) {
   const p = $('prompt');
   p.textContent = text || '';
   p.hidden = !text;
   p.classList.toggle('saving', !!saving);
+  if (!text || saving) cue(null);
 }
 function setHomeStatus(text, loading) {
   $('homeMsgText').textContent = text;
@@ -317,6 +372,33 @@ function updateHomeActions() {
   $('chooseScan').disabled = !appDataReady || !homeGPSReady || homeGPSBusy;
   $('chooseEnroll').disabled = !appDataReady;
 }
+
+/* ---------- Scan locations (guard houses) ----------
+   The list comes from the "Locations" sheet via getBootData. To add a guard house,
+   add a row in that sheet (no code change needed). */
+const GUARD_MSG = 'Please use the device in the guard house to In / Out.';
+let LOCATIONS = [];
+function distanceM(lat1, lon1, lat2, lon2) {
+  const R = 6371000, rad = x => x * Math.PI / 180;
+  const dLat = rad(lat2 - lat1), dLon = rad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+async function checkLocation() {
+  const loc = await getGPSForScan();
+  if (!LOCATIONS.length) throw new Error('No scan locations are configured. Please contact the administrator.');
+  let best = null;
+  LOCATIONS.forEach(l => {
+    const d = distanceM(loc.lat, loc.lng, l.lat, l.lng);
+    if (!best || d - l.radius < best.d - best.l.radius) best = { l, d };
+  });
+  if (best.d > best.l.radius) {
+    const err = new Error(GUARD_MSG);
+    err.outside = true; err.distance = best.d; err.place = best.l.name;
+    throw err;
+  }
+  return loc;
+}
 async function requestHomeGPS() {
   if (homeGPSBusy) return;
   homeGPSBusy = true;
@@ -325,11 +407,13 @@ async function requestHomeGPS() {
   $('retryGPS').hidden = true;
   updateHomeActions();
   try {
-    await getGPSForScan();
+    await checkLocation();
     homeGPSReady = true;
     setHomeStatus('', false);
   } catch (e) {
-    setHomeStatus('Location is required before Scan. ' + (e.message || String(e)), false);
+    setHomeStatus(e.outside
+      ? e.message + ' (About ' + Math.round(e.distance) + ' m from ' + e.place + '.)'
+      : 'Location is required before Scan. ' + (e.message || String(e)), false);
     $('retryGPS').hidden = false;
   } finally {
     homeGPSBusy = false;
@@ -414,29 +498,20 @@ async function openModule(m) {
   $('appTitle').hidden = true;
   $('scanPane').hidden = m !== 'scan';
   $('enrollPane').hidden = m !== 'enroll';
-  $('camPane').hidden = m === 'scan';
+  $('camPane').hidden = true;   // camera is shown only after Face Scan is pressed
   $('result').innerHTML = '<div style="color:var(--muted)">Look at the camera, then follow the on-screen instructions to record IN / OUT</div>';
   $('identityForm').hidden = m !== 'scan';
   $('scanActions').hidden = true;
+  $('enrollForm').hidden = false;
+  $('enrollActions').hidden = true;
   activeScanId = null;
   $('identityInput').value = '';
   updateIdentitySubmit();
   $('identityError').textContent = '';
-  $('enrollMsg').textContent = 'Face the camera, then press the button.';
+  $('enrollMsg').textContent = 'Fill in the details, then press Face Scan.';
   if (m === 'enroll') { setNameLock(false); autoFilledId = null; syncKnownEmployee(); }
   say(''); busy = false;
-  if (m === 'scan') {
-    badge('Enter employee ID to begin');
-    return;
-  }
-  try {
-    badge('Starting camera…');
-    await startCamera();
-    if (my !== session) { stopCamera(); return; }
-    badge('Ready');
-  } catch (e) {
-    badge('Camera error: ' + (e.message || e), 'bad');
-  }
+  badge(m === 'scan' ? 'Enter employee ID to begin' : 'Enter employee details to begin');
 }
 function goHome() {
   session++; mode = 'home'; busy = false;
@@ -521,11 +596,12 @@ function employeeParts(e) {
 }
 const buildFullName = (first, middle, last) => last + ', ' + [first, middle].filter(Boolean).join(' ');
 
-/* Load employee names and face descriptors */
+/* Load employee names, face descriptors and scan locations */
 async function loadEmployees() {
   const boot = await gs('getBootData');
   if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
   cfg = boot.config;
+  LOCATIONS = boot.locations || [];
   names = {};
   employeeDetails = {};
   enrollmentMatcher = null;
@@ -617,7 +693,7 @@ async function blinkMP(ms, my) {
 
 async function liveness(my) {
   // Baseline: looking straight
-  say('Look straight at the camera');
+  say('Look straight at the camera'); cue('STRAIGHT');
   const yaws = [], pitches = [], ears = [];
   if (!await waitFor(m => { yaws.push(m.yaw); pitches.push(m.pitch); ears.push(m.ear); return yaws.length >= 4; }, 4000, my)) return false;
   const y0 = yaws.sort((a, b) => a - b)[2];
@@ -626,15 +702,15 @@ async function liveness(my) {
 
   const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
   const turn = async () => {
-    say('Slowly turn your head to the ' + dir);
+    say('Slowly turn your head to the ' + dir); cue(dir);
     // Camera image is not mirrored: subject's left = larger ratio
     const ok = await waitFor(m => dir === 'LEFT' ? m.yaw > y0 + 0.15 : m.yaw < y0 - 0.15, 7000, my);
     if (!ok) return false;
-    say('Now look straight again');
+    say('Now look straight again'); cue('STRAIGHT');
     return waitFor(m => Math.abs(m.yaw - y0) < 0.07, 5000, my);
   };
   const blink = async () => {
-    say('Blink your eyes');
+    say('Blink your eyes'); cue('BLINK');
     if (blinker) return blinkMP(7000, my);
     // Fallback: the 68-point model only partly closes the eyes on a blink, so look for a
     // smaller dip relative to the recent open-eye level instead of a fixed 30% drop.
@@ -647,10 +723,10 @@ async function liveness(my) {
   };
   const tilt = async () => {
     const direction = Math.random() < 0.5 ? 'UP' : 'DOWN';
-    say('Tilt your head ' + direction.toLowerCase());
+    say('Tilt your head ' + direction.toLowerCase()); cue(direction);
     const moved = await waitFor(m => direction === 'UP' ? m.pitch < pitch0 - 0.08 : m.pitch > pitch0 + 0.08, 7000, my);
     if (!moved) return false;
-    say('Now look straight again');
+    say('Now look straight again'); cue('STRAIGHT');
     return waitFor(m => Math.abs(m.pitch - pitch0) < 0.04, 5000, my);
   };
   const steps = [turn, blink, tilt];
@@ -681,7 +757,9 @@ function showResult(r) {
     });
     return true;
   } else {
-    if (r.message && r.message.toLowerCase().includes('already')) {
+    if (r.outside) {
+      showModal({ type: 'warning', icon: '📍', title: 'Outside Allowed Area', message: r.message });
+    } else if (r.message && r.message.toLowerCase().includes('already')) {
       showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: r.message });
     } else if (r.message && r.message.toLowerCase().includes('cooldown')) {
       showModal({ type: 'warning', icon: '⚠️', title: 'Already Scanned', message: r.message });
@@ -718,7 +796,7 @@ async function verifyAndSubmit(id, my) {
   badge('Liveness check: ' + names[id]);
   if (!await liveness(my)) {
     say('');
-    if (my === session) showResult({ ok: false, message: 'Liveness check failed. Select Retry face scan to try again with this ID.' });
+    if (my === session) showResult({ ok: false, message: 'Liveness check failed. Select Face Scan to try again with this ID.' });
     return false;
   }
   if (my !== session) return false;
@@ -742,6 +820,10 @@ async function runFaceScan(id, my) {
   $('retryScan').disabled = true;
   $('cancelScan').disabled = true;
   try {
+    // Must be at an allowed location (guard house) before the camera even opens
+    badge('Checking location…');
+    await checkLocation();
+    if (my !== session || id !== activeScanId) return;
     $('camPane').hidden = false;
     if (!stream) {
       badge('Starting camera…');
@@ -761,7 +843,9 @@ async function runFaceScan(id, my) {
     }
   } catch (e) {
     if (my === session) {
-      showResult({ ok: false, message: 'Could not complete face scan: ' + (e.message || String(e)) });
+      showResult(e.outside
+        ? { ok: false, outside: true, message: e.message }
+        : { ok: false, message: 'Could not complete face scan: ' + (e.message || String(e)) });
       stopCamera();
       $('camPane').hidden = true;
     }
@@ -778,6 +862,40 @@ function updateIdentitySubmit() {
  $('identitySubmit').disabled = !$('identityInput').value.trim();
 }
 $('identityInput').addEventListener('input', updateIdentitySubmit);
+
+/* ---------- On-screen keypad for the employee ID ----------
+   Digits 1-9 and 0, prefix keys, and backspace. A prefix key replaces any prefix already typed.
+   Edit ID_PREFIXES to change the prefix keys. */
+const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC-B', 'SCI-B'];
+(function buildKeypad() {
+  const pad = $('keypad'), input = $('identityInput');
+  const changed = () => { input.dispatchEvent(new Event('input')); $('identityError').textContent = ''; };
+  const add = (label, cls, fn, aria) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = label; b.className = cls || ''; b.onclick = fn;
+    if (aria) b.setAttribute('aria-label', aria);
+    pad.appendChild(b);
+  };
+  const stripPrefix = v => {
+    const p = [...ID_PREFIXES].sort((a, b) => b.length - a.length).find(x => v.toUpperCase().startsWith(x.toUpperCase()));
+    return p ? v.slice(p.length) : v;
+  };
+  const digit = d => () => { input.value += d; changed(); };
+  const prefix = p => () => { input.value = p + stripPrefix(input.value); changed(); };
+  const del = () => {
+    const v = input.value;
+    input.value = ID_PREFIXES.some(p => p.toUpperCase() === v.toUpperCase()) ? '' : v.slice(0, -1);
+    changed();
+  };
+  '123456789'.split('').forEach(d => add(d, '', digit(d)));
+  add(ID_PREFIXES[0], 'pre', prefix(ID_PREFIXES[0]));
+  add('0', '', digit('0'));
+  add(ID_PREFIXES[1], 'pre', prefix(ID_PREFIXES[1]));
+  add(ID_PREFIXES[2], 'pre', prefix(ID_PREFIXES[2]));
+  add('⌫', 'del', del, 'Backspace');
+  add(ID_PREFIXES[3], 'pre', prefix(ID_PREFIXES[3]));
+})();
+
 $('identityForm').onsubmit = async event => {
   event.preventDefault();
   if (busy || mode !== 'scan') return;
@@ -806,13 +924,6 @@ $('identityForm').onsubmit = async event => {
       return;
     }
     activeScanId = id;
-    const scanEmployee = $('scanEmployee');
-    scanEmployee.replaceChildren();
-    const employeeName = document.createElement('div');
-    employeeName.textContent = 'Scanning for ' + names[id];
-    const employeeId = document.createElement('div');
-    employeeId.textContent = 'ID: ' + id;
-    scanEmployee.append(employeeName, employeeId);
     $('identityInput').value = '';
     $('identityForm').hidden = true;
     $('scanActions').hidden = false;
@@ -831,10 +942,10 @@ $('identityForm').onsubmit = async event => {
 $('retryScan').onclick = () => {
   if (activeScanId) runFaceScan(activeScanId, session);
 };
-$('cancelScan').onclick = () => {
+$('cancelScan').onclick = () => {   // "Edit Details": back to the employee ID keypad
   if (busy) return;
   activeScanId = null;
-  stopCamera();
+  stopCamera(); say('');
   $('camPane').hidden = true;
   $('scanActions').hidden = true;
   $('identityForm').hidden = false;
@@ -843,7 +954,6 @@ $('cancelScan').onclick = () => {
   $('identityError').textContent = '';
   $('result').innerHTML = '<div style="color:var(--muted)">Enter your employee ID to begin a face scan</div>';
   badge('Enter employee ID to begin');
-  $('identityInput').focus();
 };
 
 /* Enrollment (with liveness + duplicate ID / name / face checks) */
@@ -877,32 +987,37 @@ function syncKnownEmployee() {
     clearNames();
     setNameLock(false);
     autoFilledId = null;
-    $('enrollMsg').textContent = 'Face the camera, then press the button.';
+    $('enrollMsg').textContent = 'Fill in the details, then press Face Scan.';
   }
   updateEnrollButton();
 }
 ['pin', 'empId', 'empFirst', 'empMiddle', 'empLast'].forEach(id => $(id).addEventListener('input', updateEnrollButton));
 $('empId').addEventListener('input', syncKnownEmployee);
 
-$('btnEnroll').onclick = async () => {
+/* Enrollment screens: details form  <->  camera + [Face Scan] [Edit Details] */
+function showEnrollCamera(on) {
+  $('camPane').hidden = !on;
+  $('enrollForm').hidden = on;
+  $('enrollActions').hidden = !on;
+}
+async function startEnroll() {
+  if (busy || mode !== 'enroll') return;
   const pin = $('pin').value;
   const id = normalizeEmployeeId($('empId').value);
   let first = properCaseName($('empFirst').value);
   let middle = properCaseName($('empMiddle').value);
   let last = properCaseName($('empLast').value);
   $('empId').value = id;
-  const msg = (text, saving = false) => {
-    $('enrollMsg').textContent = text;
-    $('enrollMsg').classList.toggle('is-saving', saving);
-  };
+  // Shows in the form message, and on the camera badge when the camera is visible
+  const msg = (text, cls) => { $('enrollMsg').textContent = text; if (text && !$('camPane').hidden) badge(text, cls); };
   if (!pin || !id || !first || !last) { msg('Please fill in PIN, ID, first name and last name.'); return; }
   const my = session;
-  busy = true; $('btnEnroll').disabled = true;
-  $('btnEnroll').classList.remove('is-saving');
-  $('btnEnroll').classList.add('is-capturing');
+  busy = true;
+  ['btnEnroll', 'retryEnroll', 'editEnroll'].forEach(b => { $(b).disabled = true; });
   try {
     msg('Checking the database…');
     await loadEmployees(); // latest list, in case another device enrolled someone
+    if (my !== session) return;
 
     // Employee ID already in the database: use the stored names and go straight to the face scan
     const knownId = findKnownId(id);
@@ -920,24 +1035,33 @@ $('btnEnroll').onclick = async () => {
         return normName(buildFullName(p.first, p.middle, p.last)) === normName(fullName);
       });
       if (nameTaken !== undefined) {
-        const msgTxt = names[nameTaken] + ' is already enrolled under ID ' + nameTaken + '.';
-        msg(msgTxt);
-        showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
+        const t = names[nameTaken] + ' is already enrolled under ID ' + nameTaken + '.';
+        msg(t, 'warn');
+        showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: t });
         return;
       }
     }
 
-    msg('Liveness check — follow the instructions on the camera');
-    if (!await liveness(my)) { say(''); msg('Liveness check failed. The real person must be in front of the camera.'); return; }
+    // Checks passed: switch to the camera view
+    showEnrollCamera(true);
+    if (!stream) { badge('Starting camera…'); await startCamera(); }
+    if (my !== session) { stopCamera(); return; }
 
-    msg('Preparing enrollment… hold still and look at the camera');
+    msg('Liveness check: follow the instructions on the camera');
+    if (!await liveness(my)) {
+      say('');
+      if (my === session) msg('Liveness check failed. Press Face Scan to try again.', 'warn');
+      return;
+    }
+
+    msg('Hold still and look at the camera…');
     const samples = [];
     for (let i = 0; i < 12 && samples.length < 5; i++) {
       const d = await faceapi.detectSingleFace($('video'), detOpts()).withFaceLandmarks().withFaceDescriptor();
       if (d) samples.push(d.descriptor);
       await sleep(300);
     }
-    if (samples.length < 3) { msg('Could not see a clear face. Try again with better light.'); return; }
+    if (samples.length < 3) { msg('Could not see a clear face. Press Face Scan to try again.', 'warn'); return; }
     const avg = new Array(128).fill(0);
     samples.forEach(s => s.forEach((v, i) => { avg[i] += v / samples.length; }));
 
@@ -945,55 +1069,45 @@ $('btnEnroll').onclick = async () => {
       const m = enrollmentMatcher.findBestMatch(Float32Array.from(avg));
       // A match to the same employee ID is fine (face scan for an existing ID); a match to someone else is not.
       if (m.label !== 'unknown' && m.label !== knownId) {
-        const msgTxt = 'This face is already enrolled as ' + names[m.label] + ' (ID ' + m.label + ').';
-        msg(msgTxt);
-        showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: msgTxt });
+        const t = 'This face is already enrolled as ' + names[m.label] + ' (ID ' + m.label + ').';
+        msg(t, 'warn');
+        showModal({ type: 'warning', icon: '⚠️', title: 'Duplicate Record', message: t });
         return;
       }
     }
 
-    $('btnEnroll').classList.remove('is-capturing');
-    $('btnEnroll').classList.add('is-saving');
-    $('btnEnroll').setAttribute('aria-busy', 'true');
-    $('enrollButtonLabel').textContent = 'Saving enrollment…';
-    msg('');
+    badge('Saving enrollment…', 'saving');
     say('Saving enrollment… Please wait.', true);
     // name = column B ("LAST, FIRST MIDDLE"); first / middle / last = columns F / G / H
     const r = await gs('enrollEmployee', pin, knownId !== undefined ? knownId : id, fullName, avg, first, middle, last);
-    msg(r.message);
+    msg(r.message, r.ok ? 'ok' : 'warn');
     if (r.ok) {
-      showModal({
-        type: 'success',
-        icon: '🎉',
-        title: 'Congratulations!',
-        message: fullName + ' (ID: ' + (knownId !== undefined ? knownId : id) + ') has been enrolled successfully!'
-      });
+      showModal({ type: 'success', icon: '🎉', title: 'Congratulations!',
+        message: fullName + ' (ID: ' + (knownId !== undefined ? knownId : id) + ') has been enrolled successfully!' });
+      stopCamera();
+      showEnrollCamera(false);
       $('empId').value = ''; clearNames(); setNameLock(false); autoFilledId = null;
       await loadEmployees();
-    } else if (r.message && r.message.toLowerCase().includes('duplicate')) {
-      showModal({
-        type: 'warning',
-        icon: '⚠️',
-        title: 'Duplicate Record',
-        message: r.message
-      });
     } else if (r.message) {
-      showModal({
-        type: 'warning',
-        icon: '⚠️',
-        title: 'Notice',
-        message: r.message
-      });
+      showModal({ type: 'warning', icon: '⚠️',
+        title: r.message.toLowerCase().includes('duplicate') ? 'Duplicate Record' : 'Notice', message: r.message });
     }
   } catch (e) {
-    msg('Error: ' + (e.message || e));
+    msg('Error: ' + (e.message || e), 'warn');
   } finally {
     say('');
-    busy = false; updateEnrollButton();
-    $('btnEnroll').classList.remove('is-capturing', 'is-saving');
-    $('btnEnroll').removeAttribute('aria-busy');
-    $('enrollButtonLabel').textContent = 'Face Scan';
+    busy = false;
+    ['retryEnroll', 'editEnroll'].forEach(b => { $(b).disabled = false; });
+    updateEnrollButton();
   }
+}
+$('btnEnroll').onclick = startEnroll;
+$('retryEnroll').onclick = startEnroll;
+$('editEnroll').onclick = () => {
+  if (busy) return;
+  stopCamera(); say('');
+  showEnrollCamera(false);
+  updateEnrollButton();
 };
 
 /* Init: load models + employees on the home screen; camera starts only after a choice */
