@@ -277,8 +277,8 @@
       <label for="identityInput">Enter your employee ID:</label>
       <input id="identityInput" inputmode="none" autocomplete="off" required aria-describedby="identityError">
       <div id="identityError" aria-live="polite"></div>
-      <button id="identitySubmit" type="submit" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
       <div id="keypad" class="keypad" role="group" aria-label="Employee ID keypad"></div>
+      <button id="identitySubmit" type="submit" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
     </form>
     <div id="scanActions" class="form scan-actions" hidden>
       <button type="button" id="retryScan"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
@@ -712,7 +712,7 @@ async function liveness(my) {
 
   const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
   const turn = async () => {
-    say('Slowly turn your head to the ' + dir); cue(dir);
+    say('Turn your head to the ' + dir); cue(dir);
     // Camera image is not mirrored: subject's left = larger ratio
     const ok = await waitFor(m => dir === 'LEFT' ? m.yaw > y0 + 0.15 : m.yaw < y0 - 0.15, 7000, my);
     if (!ok) return false;
