@@ -249,6 +249,29 @@
   @keyframes eyeBlink { 0%,55%,100% { transform:scaleY(1); } 70% { transform:scaleY(.08); } }
   @keyframes cuePulse { 50% { transform:scale(1.15); } }
   @media (prefers-reduced-motion:reduce) { .cue .ch { animation:none; opacity:1; } .cue .eye, .cue .ring { animation:none; } }
+
+  /* ---------- Employee ID field: centered text ---------- */
+  #identityInput { text-align:center; font-size:clamp(18px,5vw,24px); font-weight:700; letter-spacing:.06em; }
+
+  /* ---------- Latest attendance records (auto-scrolling) ---------- */
+  .recent { display:flex; flex-direction:column; min-height:0; background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .recent-title { flex:none; padding:8px 12px; font-size:13px; font-weight:700; color:var(--muted); border-bottom:1px solid var(--border); }
+  .recent-view { position:relative; flex:1 1 auto; min-height:0; overflow-y:auto; padding:8px; scrollbar-width:none; }
+  .recent-view::-webkit-scrollbar { display:none; }
+  .recent-row { display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:6px; border-radius:8px; background:var(--field); border:1px solid var(--border); }
+  .recent-tag { flex:none; min-width:48px; text-align:center; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; color:#fff; }
+  .recent-tag.IN { background:var(--ok); }
+  .recent-tag.OUT { background:var(--warn); }
+  [data-theme="dark"] .recent-tag.IN { color:#04210f; }
+  [data-theme="dark"] .recent-tag.OUT { color:#000; }
+  .recent-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; }
+  .recent-time { flex:none; text-align:right; font-size:12px; line-height:1.3; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .recent-empty { padding:18px 8px; text-align:center; font-size:14px; color:var(--muted); }
+  #recentHome { height:clamp(170px,34dvh,320px); }
+  body[data-mode="scan"] #scanPane:has(#identityForm:not([hidden])) { flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
+  body[data-mode="scan"] #identityForm { flex:none; }
+  body[data-mode="scan"] #recentScan { flex:1 1 0; min-height:96px; }
+  #scanPane:has(#identityForm[hidden]) #recentScan { display:none; }
 </style>
 </head>
 <body>
@@ -261,6 +284,7 @@
   <button class="choice scan" id="chooseScan"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M20 28c0-8 5-13 12-13s12 5 12 13v5c0 9-5 15-12 15s-12-6-12-15v-5Z" stroke="currentColor" stroke-width="2.5"/><path d="M25 29h.1M39 29h.1M28 39c2.5 2 5.5 2 8 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></span></button>
   <button class="choice enroll" id="chooseEnroll"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="28" cy="25" r="7" stroke="currentColor" stroke-width="2.5"/><path d="M15 46v-3a9 9 0 0 1 9-9h8M43 25v13m-6.5-6.5h13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></span></button>
   <div id="homeMsg" role="status" aria-live="polite"><span id="homeSpinner" class="loading-spinner" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="face-outline" d="M5 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H7a2 2 0 0 1-2-2v-2M8 10v2m8-2v2m-8 3c2.5 2 5.5 2 8 0"/></svg><span class="face-scan"></span></span><span id="homeMsgText">Loading…</span><span id="homeDots" class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span><button type="button" id="retryGPS" hidden>Retry GPS location</button></div>
+  <div class="recent" id="recentHome" aria-label="Most recent entries."><div class="recent-title">Most recent entries.</div><div class="recent-view"><div class="recent-list"><div class="recent-empty">Loading…</div></div></div></div>
 </section>
 
 <main id="app" hidden>
@@ -280,6 +304,7 @@
       <div id="keypad" class="keypad" role="group" aria-label="Employee ID keypad"></div>
       <button id="identitySubmit" type="submit" disabled><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
     </form>
+    <div class="recent" id="recentScan" aria-label="Most recent entries."><div class="recent-title">Most recent entries.</div><div class="recent-view"><div class="recent-list"><div class="recent-empty">Loading…</div></div></div></div>
     <div id="scanActions" class="form scan-actions" hidden>
       <button type="button" id="retryScan"><span class="action-icon face-scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/><path d="M8 10a4 4 0 0 1 8 0v2a4 4 0 0 1-8 0v-2Z"/></svg></span>Face Scan</button>
       <button type="button" id="cancelScan"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>Edit Details</button>
@@ -314,7 +339,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
 
-let enrollmentMatcher = null, names = {}, employeeDetails = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5 };
+// threshold     = duplicate-face check at enrollment (MATCH_THRESHOLD in the Config sheet)
+// scanThreshold = face match when scanning with an employee ID (SCAN_THRESHOLD in the Config sheet)
+let enrollmentMatcher = null, names = {}, employeeDetails = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5, scanThreshold: 0.55 };
 let mode = 'home', busy = false, pos = null, activeScanId = null;
 let appDataReady = false, homeGPSReady = false, homeGPSBusy = false;
 
@@ -478,7 +505,8 @@ async function startCamera() {
   if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
     throw new Error('Camera API unavailable. Do not open this file directly (file://). Run it via http://localhost or http://127.0.0.1 with a local server, and use Chrome/Edge.');
   }
-  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+  // Ask for a higher resolution (the browser picks the closest the device supports)
+  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
   const v = $('video');
   v.srcObject = stream;
   await new Promise(r => { v.onloadedmetadata = r; });
@@ -517,6 +545,7 @@ function goHome() {
   session++; mode = 'home'; busy = false;
   delete document.body.dataset.mode;
   activeScanId = null;
+  loadRecent();
   stopCamera(); say('');
   $('app').hidden = true; $('home').hidden = false; $('btnBack').hidden = true;
   $('appTitle').hidden = false;
@@ -534,7 +563,6 @@ function startGPS() {
   if (gpsWatch !== null) return;
   gpsWatch = navigator.geolocation.watchPosition(
     p => {
-      //pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
       pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() };
       setGPSStatus('GPS: ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5) + ' (±' + Math.round(pos.acc) + ' m)');
     },
@@ -606,11 +634,12 @@ function employeeParts(e) {
 }
 const buildFullName = (first, middle, last) => last + ', ' + [first, middle].filter(Boolean).join(' ');
 
-/* Load employee names, face descriptors and scan locations */
+/* Load employee names, face descriptors and scan locations.
+   Each employee can have several saved face samples (different devices / lighting). */
 async function loadEmployees() {
   const boot = await gs('getBootData');
   if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
-  cfg = boot.config;
+  cfg = Object.assign({ threshold: 0.5, scanThreshold: 0.55 }, boot.config || {});
   LOCATIONS = boot.locations || [];
   names = {};
   employeeDetails = {};
@@ -620,13 +649,31 @@ async function loadEmployees() {
   boot.employees.forEach(e => {
     names[e.id] = e.name;
     employeeDetails[e.id] = employeeParts(e);
-    if (e.descriptor && e.descriptor.length === 128) {
-      const descriptor = Float32Array.from(e.descriptor);
-      employeeDescriptors.set(e.id, descriptor);
-      labeled.push(new faceapi.LabeledFaceDescriptors(e.id, [descriptor]));
+    const list = (e.descriptors || [])
+      .filter(d => Array.isArray(d) && d.length === 128)
+      .map(d => Float32Array.from(d));
+    if (list.length) {
+      employeeDescriptors.set(e.id, list);
+      labeled.push(new faceapi.LabeledFaceDescriptors(e.id, list));
     }
   });
   if (labeled.length) enrollmentMatcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
+}
+
+/* Average several frames into one steadier face descriptor (less noise from any camera). */
+async function captureAvgDescriptor(my, n = 5) {
+  const samples = [];
+  for (let i = 0; i < 10 && samples.length < n; i++) {
+    if (my !== session) return null;
+    const all = await faceapi.detectAllFaces($('video'), detOpts()).withFaceLandmarks().withFaceDescriptors();
+    if (all.length > 1) return null;                 // more than one person in view
+    if (all.length === 1) samples.push(all[0].descriptor);
+    await sleep(150);
+  }
+  if (samples.length < 3) return null;
+  const avg = new Float32Array(128);
+  samples.forEach(s => s.forEach((v, i) => { avg[i] += v / samples.length; }));
+  return avg;
 }
 
 /* ---------- Liveness check (rejects printed photos / pictures on a screen) ----------
@@ -712,7 +759,7 @@ async function liveness(my) {
 
   const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
   const turn = async () => {
-    say('Turn your head to the ' + dir); cue(dir);
+    say('Slowly turn your head to the ' + dir); cue(dir);
     // Camera image is not mirrored: subject's left = larger ratio
     const ok = await waitFor(m => dir === 'LEFT' ? m.yaw > y0 + 0.15 : m.yaw < y0 - 0.15, 7000, my);
     if (!ok) return false;
@@ -783,7 +830,8 @@ function showResult(r) {
   }
 }
 
-async function submit(id, dist, my) {
+/* Save the scan. `live` is the averaged face sample; the server may learn it as a new sample. */
+async function submit(id, dist, my, live) {
   try {
     const savingMessage = 'Saving record…';
     badge(savingMessage, 'saving');
@@ -791,7 +839,8 @@ async function submit(id, dist, my) {
     const location = await getGPSForScan();
     if (my !== session) return false;
     const r = await gs('recordScan', id,
-      location.lat, location.lng, location.acc, dist);
+      location.lat, location.lng, location.acc, dist,
+      Array.from(live).map(n => Math.round(n * 1e4) / 1e4));
     return my === session ? showResult(r) : false;
   } catch (e) {
     if (my === session) showResult({ ok: false, message: e.message || String(e) });
@@ -801,7 +850,7 @@ async function submit(id, dist, my) {
   }
 }
 
-/* Scan: employee ID lookup -> liveness challenge -> compare only with that employee's face -> record */
+/* Scan: employee ID lookup -> liveness challenge -> compare only with that employee's saved faces -> record */
 async function verifyAndSubmit(id, my) {
   badge('Liveness check: ' + names[id]);
   if (!await liveness(my)) {
@@ -810,18 +859,24 @@ async function verifyAndSubmit(id, my) {
     return false;
   }
   if (my !== session) return false;
-  const faces = await faceapi.detectAllFaces($('video'), detOpts()).withFaceLandmarks().withFaceDescriptors();
-  if (faces.length !== 1) {
-    if (my === session) showResult({ ok: false, message: 'Show only one face to the camera and try again with this ID.' });
+  badge('Hold still…');
+  const live = await captureAvgDescriptor(my);
+  if (my !== session) return false;
+  if (!live) {
+    showResult({ ok: false, message: 'Could not see a clear face. Show only one face to the camera and try again with this ID.' });
     return false;
   }
-  const descriptor = employeeDescriptors.get(id);
-  const distance = descriptor && faceapi.euclideanDistance(faces[0].descriptor, descriptor);
-  if (distance === undefined || distance > cfg.threshold) {
-    if (my === session) showResult({ ok: false, message: 'Face does not match employee ID ' + id + '. No attendance was recorded.' });
+  const list = employeeDescriptors.get(id) || [];
+  const distance = list.length
+    ? Math.min(...list.map(d => faceapi.euclideanDistance(live, d)))
+    : undefined;
+  if (distance === undefined || distance > cfg.scanThreshold) {
+    showResult({ ok: false, message: 'Face does not match employee ID ' + id +
+      '. No attendance was recorded. (distance ' + (distance !== undefined ? distance.toFixed(2) : 'n/a') +
+      ', limit ' + cfg.scanThreshold + ')' });
     return false;
   }
-  return submit(id, distance, my);
+  return submit(id, distance, my, live);
 }
 
 async function runFaceScan(id, my) {
@@ -842,6 +897,8 @@ async function runFaceScan(id, my) {
     if (my !== session || id !== activeScanId) { stopCamera(); return; }
     const recorded = await verifyAndSubmit(id, my);
     if (my === session && id === activeScanId && recorded) {
+      loadRecent();
+      loadEmployees().catch(() => {});   // refresh saved face samples (a new one may have been learned)
       stopCamera();
       $('camPane').hidden = true;
       $('scanActions').hidden = true;
@@ -876,7 +933,7 @@ $('identityInput').addEventListener('input', updateIdentitySubmit);
 /* ---------- On-screen keypad for the employee ID ----------
    Digits 1-9 and 0, prefix keys, and backspace. A prefix key replaces any prefix already typed.
    Edit ID_PREFIXES to change the prefix keys. */
-const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC_B', 'SCI_B'];
+const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC-B', 'SCI-B'];
 (function buildKeypad() {
   const pad = $('keypad'), input = $('identityInput');
   const changed = () => { input.dispatchEvent(new Event('input')); $('identityError').textContent = ''; };
@@ -1120,6 +1177,82 @@ $('editEnroll').onclick = () => {
   updateEnrollButton();
 };
 
+/* ---------- Latest attendance records (auto-scrolling list on the Home and Scan screens) ----------
+   Shows the 5 newest records from the Attendance sheet. If they do not fit the box, the list scrolls
+   by itself and loops. Touching, dragging or using the mouse wheel pauses it for a few seconds. */
+let recentKey = '';
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function recentRow(r) {
+  const row = document.createElement('div');
+  row.className = 'recent-row';
+  const tag = document.createElement('span');
+  const type = r.type === 'OUT' ? 'OUT' : 'IN';
+  tag.className = 'recent-tag ' + type; tag.textContent = type;
+  const name = document.createElement('span');
+  name.className = 'recent-name'; name.textContent = r.name || r.id;
+  const time = document.createElement('span');
+  time.className = 'recent-time';
+  const t = document.createElement('div'); t.textContent = r.time;
+  const d = document.createElement('div'); d.textContent = r.date;
+  time.append(t, d);
+  row.append(tag, name, time);
+  return row;
+}
+function renderRecent(records) {
+  const key = JSON.stringify(records);
+  if (key === recentKey) return;           // nothing new: keep the current scroll position
+  recentKey = key;
+  document.querySelectorAll('.recent-view').forEach(view => {
+    const list = view.firstElementChild;
+    list.replaceChildren();
+    view.scrollTop = 0; view._pos = 0;
+    view.dataset.n = records.length;
+    if (!records.length) {
+      const e = document.createElement('div');
+      e.className = 'recent-empty'; e.textContent = 'No attendance records yet';
+      list.appendChild(e);
+      return;
+    }
+    records.forEach(r => list.appendChild(recentRow(r)));
+  });
+}
+async function loadRecent() {
+  try {
+    const r = await gs('getRecent');
+    if (r && r.ok && Array.isArray(r.records)) renderRecent(r.records);
+  } catch (e) { console.warn('Could not load recent records', e); }
+}
+function recentTick() {
+  document.querySelectorAll('.recent-view').forEach(v => {
+    const n = Number(v.dataset.n || 0);
+    if (!n || !v.offsetParent) return;      // empty or hidden
+    const list = v.firstElementChild, kids = list.children;
+    const cloned = kids.length > n;
+    const last = kids[n - 1];
+    const cycle = last.offsetTop + last.offsetHeight + 6 - kids[0].offsetTop;   // height of one full set of rows
+    if (cycle + 16 <= v.clientHeight) {      // everything fits: no scrolling needed
+      while (list.children.length > n) list.lastChild.remove();
+      v.scrollTop = 0; v._pos = 0;
+      return;
+    }
+    if (!cloned) for (let i = 0; i < n; i++) list.appendChild(kids[i].cloneNode(true));   // copy for a seamless loop
+    if (reducedMotion || v._paused) return;
+    v._pos = (v._pos || 0) + 0.1;
+    if (v._pos >= cycle) v._pos -= cycle;
+    v.scrollTop = v._pos;
+  });
+  requestAnimationFrame(recentTick);
+}
+document.querySelectorAll('.recent-view').forEach(v => {
+  const pause = () => { v._paused = true; clearTimeout(v._t); };
+  const resume = () => { clearTimeout(v._t); v._t = setTimeout(() => { v._pos = v.scrollTop; v._paused = false; }, 2500); };
+  ['pointerdown', 'touchstart'].forEach(ev => v.addEventListener(ev, pause, { passive: true }));
+  ['pointerup', 'touchend'].forEach(ev => v.addEventListener(ev, resume, { passive: true }));
+  v.addEventListener('wheel', () => { pause(); resume(); }, { passive: true });
+});
+requestAnimationFrame(recentTick);
+setInterval(() => { if (!document.hidden && !busy && (mode === 'home' || mode === 'scan')) loadRecent(); }, 20000);
+
 /* Init: load models + employees on the home screen; camera starts only after a choice */
 (async function init() {
   updateHomeActions();
@@ -1134,6 +1267,7 @@ $('editEnroll').onclick = () => {
     ]);
     setHomeStatus('Loading employees…', true);
     await loadEmployees();
+    loadRecent();
     appDataReady = true;
     updateHomeActions();
     await requestHomeGPS();
