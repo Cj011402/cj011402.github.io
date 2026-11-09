@@ -54,7 +54,11 @@
   #result .type { font-size:34px; font-weight:700; }
   #result .IN { color:var(--ok); } #result .OUT { color:var(--warn); } #result .ERR { color:var(--bad); font-size:14px; }
   #result .name { font-size:20px; margin-top:4px; } #result .time { color:var(--muted); margin-top:2px; }
-  .gps-status { margin-top:10px; font-size:13px; color:var(--muted); text-align:center; }
+  .gps-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; padding:0 8px; }
+  .gps-status { min-width:0; font-size:13px; color:var(--muted); text-align:center; overflow-wrap:anywhere; }
+  #retryGPS { display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; padding:7px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; }
+  #retryGPS svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  #retryGPS:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
   .form { margin-top:14px; background:var(--card); padding:clamp(12px,3vw,20px); border-radius:12px; display:grid; gap:clamp(8px,2vw,12px); min-width:0; }
   .form input { width:100%; min-width:0; padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:clamp(14px,3.8vw,16px); }
   .form input[readonly] { opacity:.7; cursor:not-allowed; }
@@ -67,6 +71,7 @@
   .back { border:0; background:var(--card); color:var(--text); padding:8px 12px; border-radius:8px; font-size:14px; cursor:pointer; }
   #home { width:min(520px,100%); margin:0 auto; padding:clamp(16px,4vw,24px) clamp(12px,4vw,16px); display:grid; gap:clamp(10px,3vw,14px); }
   #home .lead { text-align:center; color:var(--muted); margin:0 0 6px; }
+  #homeDistance { margin:-10px 0 4px; text-align:center; color:var(--muted); font-size:13px; }
   .choice { display:flex; align-items:center; gap:clamp(10px,3vw,16px); padding:clamp(14px,4vw,20px); min-width:0; width:100%; border:0; border-radius:14px; color:#fff; cursor:pointer; text-align:left; }
   .choice.scan { background:var(--accent); } .choice.enroll { background:var(--enroll); }
   .choice-copy { display:flex; flex-direction:column; gap:4px; min-width:0; }
@@ -101,8 +106,6 @@
   button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
   button:disabled { cursor:not-allowed; }
   #homeMsg { display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; font-size:14px; color:var(--muted); min-height:20px; }
-  #homeMsg:has(#retryGPS:not([hidden])) { flex-direction:column; }
-  #retryGPS { padding:8px 14px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
   .loading-spinner { position:relative; display:grid; place-items:center; width:36px; height:36px; flex:none; }
   .loading-spinner::before { content:""; position:absolute; inset:1px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:homeLoadingSpin 1.2s linear infinite; }
   .loading-spinner svg { width:22px; height:22px; overflow:visible; color:var(--accent); }
@@ -259,12 +262,16 @@
   .recent-view { position:relative; flex:1 1 auto; min-height:0; overflow-y:auto; padding:8px; scrollbar-width:none; }
   .recent-view::-webkit-scrollbar { display:none; }
   .recent-row { display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:6px; border-radius:8px; background:var(--field); border:1px solid var(--border); }
-  .recent-tag { flex:none; min-width:48px; text-align:center; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; color:#fff; }
+  .recent-tag-col { display:flex; flex-direction:column; align-items:center; gap:3px; flex:none; min-width:48px; }
+  .recent-tag { flex:none; width:100%; text-align:center; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; color:#fff; }
   .recent-tag.IN { background:var(--ok); }
   .recent-tag.OUT { background:var(--warn); }
   [data-theme="dark"] .recent-tag.IN { color:#04210f; }
   [data-theme="dark"] .recent-tag.OUT { color:#000; }
-  .recent-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; }
+  .recent-person { flex:1; min-width:0; overflow:hidden; }
+  .recent-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; }
+  .recent-latest { display:inline-block; padding:1px 5px; border-radius:4px; background:var(--accent); color:#fff; font-size:9px; font-weight:800; letter-spacing:.04em; }
+  .recent-id { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
   .recent-time { flex:none; text-align:right; font-size:12px; line-height:1.3; color:var(--muted); font-variant-numeric:tabular-nums; }
   .recent-empty { padding:18px 8px; text-align:center; font-size:14px; color:var(--muted); }
   #recentHome { height:clamp(170px,34dvh,320px); }
@@ -277,13 +284,14 @@
 <body>
 <header><div class="hleft"><button id="btnBack" class="back" hidden><svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Back</button><h1 id="appTitle">GSDC In &amp; Out</h1></div><div id="clock"></div><div class="hright"><button id="btnTheme" type="button" aria-label="Switch dark / light mode"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2m16 0h2"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5Z"/></svg><span class="theme-thumb"></span></span><span id="themeLabel"></span></button></div></header>
 
-<div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div>
+<div class="gps-row"><div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div><button type="button" id="retryGPS" aria-label="Retry GPS location" title="Retry GPS location" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg></button></div>
 
 <section id="home">
-  <p class="lead">What would you like to do?</p>
+  <p class="lead">Please use the device in the guard house to In / Out.</p>
+  <p id="homeDistance" hidden></p>
   <button class="choice scan" id="chooseScan"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M20 28c0-8 5-13 12-13s12 5 12 13v5c0 9-5 15-12 15s-12-6-12-15v-5Z" stroke="currentColor" stroke-width="2.5"/><path d="M25 29h.1M39 29h.1M28 39c2.5 2 5.5 2 8 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></span></button>
   <button class="choice enroll" id="chooseEnroll"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="28" cy="25" r="7" stroke="currentColor" stroke-width="2.5"/><path d="M15 46v-3a9 9 0 0 1 9-9h8M43 25v13m-6.5-6.5h13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></span></button>
-  <div id="homeMsg" role="status" aria-live="polite"><span id="homeSpinner" class="loading-spinner" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="face-outline" d="M5 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H7a2 2 0 0 1-2-2v-2M8 10v2m8-2v2m-8 3c2.5 2 5.5 2 8 0"/></svg><span class="face-scan"></span></span><span id="homeMsgText">Loading…</span><span id="homeDots" class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span><button type="button" id="retryGPS" hidden>Retry GPS location</button></div>
+  <div id="homeMsg" role="status" aria-live="polite"><span id="homeSpinner" class="loading-spinner" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="face-outline" d="M5 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H7a2 2 0 0 1-2-2v-2M8 10v2m8-2v2m-8 3c2.5 2 5.5 2 8 0"/></svg><span class="face-scan"></span></span><span id="homeMsgText">Loading…</span><span id="homeDots" class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
   <div class="recent" id="recentHome" aria-label="Most recent entries."><div class="recent-title">Most recent entries.</div><div class="recent-view"><div class="recent-list"><div class="recent-empty">Loading…</div></div></div></div>
 </section>
 
@@ -339,20 +347,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
 
-// threshold     = duplicate-face check at enrollment (MATCH_THRESHOLD in the Config sheet)
-// scanThreshold = face match when scanning with an employee ID (SCAN_THRESHOLD in the Config sheet)
 let enrollmentMatcher = null, names = {}, employeeDetails = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5, scanThreshold: 0.55 };
 let mode = 'home', busy = false, pos = null, activeScanId = null;
 let appDataReady = false, homeGPSReady = false, homeGPSBusy = false;
 
-// ====== SET THESE TWO ======
-//const API_URL = 'https://script.google.com/macros/s/AKfycbwdfR3fnuDQpwsYbkpax_MW2oDCn8ypL5_wjkTreKf6X6fHjLHi1CmeoUyu8ZHhf2bF/exec'; // ends with /exec
 const API_URL = 'https://script.google.com/macros/s/AKfycbyEMU7ApfZZ_wbZErDLxP29-Kx7ZFoTBH4jQArPb9vyVxoNXtAZuUSsqMn6vTMBOqoq/exec';
-const API_KEY = 'x7Kp29qLmA';               // same as API_KEY in the Config tab
-// ===========================
+const API_KEY = 'x7Kp29qLmA';
 
 async function gs(fn, ...args) {
-  // No Content-Type header on purpose: keeps it a "simple" request so Apps Script accepts it from another site.
   const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ key: API_KEY, fn: fn, args: args }) });
   const body = await res.text();
   let data;
@@ -370,7 +372,6 @@ async function gs(fn, ...args) {
 }
 function badge(text, cls) { const b = $('badge'); b.textContent = text; b.className = cls || ''; }
 
-/* Visual cues shown on the camera during the liveness check */
 const CHEV = '<svg class="ch" viewBox="0 0 48 48"><path d="M16 8l16 16-16 16"/></svg>'.repeat(3);
 const CUE_HTML = {
   LEFT: CHEV, RIGHT: CHEV, UP: CHEV, DOWN: CHEV,
@@ -400,9 +401,6 @@ function updateHomeActions() {
   $('chooseEnroll').disabled = !appDataReady;
 }
 
-/* ---------- Scan locations (guard houses) ----------
-   The list comes from the "Locations" sheet via getBootData. To add a guard house,
-   add a row in that sheet (no code change needed). */
 const GUARD_MSG = 'Please use the device in the guard house to In / Out.';
 let LOCATIONS = [];
 function distanceM(lat1, lon1, lat2, lon2) {
@@ -430,6 +428,8 @@ async function requestHomeGPS() {
   if (homeGPSBusy) return;
   homeGPSBusy = true;
   homeGPSReady = false;
+  $('homeDistance').hidden = true;
+  $('homeDistance').textContent = '';
   setHomeStatus('Getting GPS location…', true);
   $('retryGPS').hidden = true;
   updateHomeActions();
@@ -438,9 +438,13 @@ async function requestHomeGPS() {
     homeGPSReady = true;
     setHomeStatus('', false);
   } catch (e) {
-    setHomeStatus(e.outside
-      ? e.message + ' (About ' + Math.round(e.distance) + ' m from ' + e.place + '.)'
-      : 'Location is required before Scan. ' + (e.message || String(e)), false);
+    if (e.outside) {
+      $('homeDistance').textContent = '(About ' + Math.round(e.distance) + ' m from ' + e.place + '.)';
+      $('homeDistance').hidden = false;
+      setHomeStatus('', false);
+    } else {
+      setHomeStatus('Location is required before Scan. ' + (e.message || String(e)), false);
+    }
     $('retryGPS').hidden = false;
   } finally {
     homeGPSBusy = false;
@@ -448,7 +452,6 @@ async function requestHomeGPS() {
   }
 }
 
-/* Confetti */
 function shootConfetti() {
   const canvas = document.getElementById('confetti-canvas');
   if (typeof confetti === 'function') {
@@ -463,7 +466,6 @@ function shootConfetti() {
   }
 }
 
-/* Modal */
 function showModal(opts) {
   const overlay = document.getElementById('appModal');
   const modal = document.getElementById('modalContent');
@@ -480,7 +482,6 @@ function showModal(opts) {
   if (opts.type === 'success') { shootConfetti(); }
 }
 
-/* Dark / light mode */
 function paintThemeBtn() {
   const dark = document.documentElement.dataset.theme === 'dark';
   $('btnTheme').classList.toggle('is-dark', dark);
@@ -495,17 +496,14 @@ $('btnTheme').onclick = () => {
 };
 paintThemeBtn();
 
-/* Clock */
 setInterval(() => { $('clock').textContent = new Date().toLocaleTimeString(); }, 1000);
 
-/* ---------- Screens: home (no camera) -> Scan or Enroll ---------- */
 let stream = null, gpsWatch = null, session = 0;
 
 async function startCamera() {
   if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
     throw new Error('Camera API unavailable. Do not open this file directly (file://). Run it via http://localhost or http://127.0.0.1 with a local server, and use Chrome/Edge.');
   }
-  // Ask for a higher resolution (the browser picks the closest the device supports)
   stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
   const v = $('video');
   v.srcObject = stream;
@@ -526,7 +524,7 @@ async function openModule(m) {
   $('appTitle').hidden = true;
   $('scanPane').hidden = m !== 'scan';
   $('enrollPane').hidden = m !== 'enroll';
-  $('camPane').hidden = true;   // camera is shown only after Face Scan is pressed
+  $('camPane').hidden = true;
   $('result').innerHTML = '<div style="color:var(--muted)">Look at the camera, then follow the on-screen instructions to record IN / OUT</div>';
   $('identityForm').hidden = m !== 'scan';
   $('scanActions').hidden = true;
@@ -557,7 +555,6 @@ $('chooseEnroll').onclick = () => openModule('enroll');
 $('retryGPS').onclick = requestHomeGPS;
 $('btnBack').onclick = goHome;
 
-/* GPS */
 function startGPS() {
   if (!navigator.geolocation) { setGPSStatus('GPS not supported'); return; }
   if (gpsWatch !== null) return;
@@ -575,7 +572,6 @@ function getGPSForScan() {
     setGPSStatus('GPS unavailable');
     return Promise.reject(new Error('Location is unavailable. Enable GPS/location services to record attendance.'));
   }
-  // Reuse a fix from the live GPS watch if it is less than 15 seconds old
   if (pos && pos.t && Date.now() - pos.t < 15000) return Promise.resolve(pos);
 
   const once = opts => new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, opts));
@@ -588,11 +584,11 @@ function getGPSForScan() {
     try {
       p = await once({ enableHighAccuracy: true, maximumAge: 10000, timeout: 12000 });
     } catch (e) {
-      if (e.code === 1) {            // permission denied: retrying won't help
+      if (e.code === 1) {
         setGPSStatus('GPS unavailable: ' + reason(e));
         throw new Error(reason(e) + ' Enable location access and try again.');
       }
-      try {                          // fall back to network / Wi-Fi location
+      try {
         p = await once({ enableHighAccuracy: false, maximumAge: 60000, timeout: 15000 });
       } catch (e2) {
         setGPSStatus('GPS unavailable: ' + reason(e2));
@@ -609,21 +605,17 @@ function getGPSForScan() {
   })();
 }
 
-/* ---------- Employee names ----------
-   Sheet columns: B = "LAST, FIRST MIDDLE", F = first name, G = middle name, H = last name.
-   getBootData should return first / middle / last for every employee. Older rows that only
-   have the full name in column B are split here as a fallback. */
 function employeeParts(e) {
   let first = String(e.first || '').trim(), middle = String(e.middle || '').trim(), last = String(e.last || '').trim();
   if (!first && !last && e.name) {
     const full = String(e.name).trim();
-    if (full.includes(',')) {                       // "LAST, FIRST MIDDLE"
+    if (full.includes(',')) {
       const i = full.indexOf(',');
       last = full.slice(0, i).trim();
       const words = full.slice(i + 1).trim().split(/\s+/).filter(Boolean);
       first = words.shift() || '';
       middle = words.join(' ');
-    } else {                                        // older rows: "First Middle Last"
+    } else {
       const words = full.split(/\s+/).filter(Boolean);
       first = words.shift() || '';
       last = words.length ? words.pop() : '';
@@ -634,8 +626,6 @@ function employeeParts(e) {
 }
 const buildFullName = (first, middle, last) => last + ', ' + [first, middle].filter(Boolean).join(' ');
 
-/* Load employee names, face descriptors and scan locations.
-   Each employee can have several saved face samples (different devices / lighting). */
 async function loadEmployees() {
   const boot = await gs('getBootData');
   if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
@@ -660,13 +650,12 @@ async function loadEmployees() {
   if (labeled.length) enrollmentMatcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
 }
 
-/* Average several frames into one steadier face descriptor (less noise from any camera). */
 async function captureAvgDescriptor(my, n = 5) {
   const samples = [];
   for (let i = 0; i < 10 && samples.length < n; i++) {
     if (my !== session) return null;
     const all = await faceapi.detectAllFaces($('video'), detOpts()).withFaceLandmarks().withFaceDescriptors();
-    if (all.length > 1) return null;                 // more than one person in view
+    if (all.length > 1) return null;
     if (all.length === 1) samples.push(all[0].descriptor);
     await sleep(150);
   }
@@ -676,8 +665,6 @@ async function captureAvgDescriptor(my, n = 5) {
   return avg;
 }
 
-/* ---------- Liveness check (rejects printed photos / pictures on a screen) ----------
-   Require a head turn, a tilt, and a blink in a random order and direction, within a time limit. */
 function eyeEAR(p) {
   const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   return (d(p[1], p[5]) + d(p[2], p[4])) / (2 * d(p[0], p[3]));
@@ -686,13 +673,10 @@ function faceMetrics(lm) {
   const p = lm.positions;
   return {
     ear: (eyeEAR(p.slice(36, 42)) + eyeEAR(p.slice(42, 48))) / 2,
-    // Nose tip position between the outer eye corners: ~0.5 when facing the camera.
-    // Tilting a flat photo doesn't change this ratio; turning a real head does.
     yaw: (p[30].x - p[36].x) / (p[45].x - p[36].x),
     pitch: (p[30].y - (p[36].y + p[45].y) / 2) / (p[8].y - (p[36].y + p[45].y) / 2)
   };
 }
-// Runs fast detection until test() returns true. Fails on timeout, lost face, extra faces or leaving the module.
 async function waitFor(test, ms, my, opts) {
   const end = Date.now() + ms;
   let lost = 0;
@@ -709,9 +693,7 @@ async function waitFor(test, ms, my, opts) {
   badge('Took too long', 'warn');
   return false;
 }
-/* Blink detection with MediaPipe Face Landmarker: it reports an eye-blink score per eye
-   and runs fast enough to catch a quick blink. Loaded in the background; if it fails to
-   load, the face-api eye-opening check above is used instead. */
+
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 let blinker = null;
 async function loadBlinker() {
@@ -749,7 +731,6 @@ async function blinkMP(ms, my) {
 }
 
 async function liveness(my) {
-  // Baseline: looking straight
   say('Look straight at the camera'); cue('STRAIGHT');
   const yaws = [], pitches = [], ears = [];
   if (!await waitFor(m => { yaws.push(m.yaw); pitches.push(m.pitch); ears.push(m.ear); return yaws.length >= 4; }, 4000, my)) return false;
@@ -760,7 +741,6 @@ async function liveness(my) {
   const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
   const turn = async () => {
     say('Turn your head to the ' + dir); cue(dir);
-    // Camera image is not mirrored: subject's left = larger ratio
     const ok = await waitFor(m => dir === 'LEFT' ? m.yaw > y0 + 0.15 : m.yaw < y0 - 0.15, 7000, my);
     if (!ok) return false;
     say('Now look straight again'); cue('STRAIGHT');
@@ -769,8 +749,6 @@ async function liveness(my) {
   const blink = async () => {
     say('Blink your eyes'); cue('BLINK');
     if (blinker) return blinkMP(7000, my);
-    // Fallback: the 68-point model only partly closes the eyes on a blink, so look for a
-    // smaller dip relative to the recent open-eye level instead of a fixed 30% drop.
     let open = earOpen, closed = false;
     return waitFor(m => {
       open = Math.max(open * 0.97, m.ear);
@@ -796,7 +774,6 @@ async function liveness(my) {
   return true;
 }
 
-/* Show result card */
 function showResult(r) {
   const el = $('result');
   el.innerHTML = '';
@@ -830,7 +807,6 @@ function showResult(r) {
   }
 }
 
-/* Save the scan. `live` is the averaged face sample; the server may learn it as a new sample. */
 async function submit(id, dist, my, live) {
   try {
     const savingMessage = 'Saving record…';
@@ -850,7 +826,6 @@ async function submit(id, dist, my, live) {
   }
 }
 
-/* Scan: employee ID lookup -> liveness challenge -> compare only with that employee's saved faces -> record */
 async function verifyAndSubmit(id, my) {
   badge('Liveness check: ' + names[id]);
   if (!await liveness(my)) {
@@ -885,7 +860,6 @@ async function runFaceScan(id, my) {
   $('retryScan').disabled = true;
   $('cancelScan').disabled = true;
   try {
-    // Must be at an allowed location (guard house) before the camera even opens
     badge('Checking location…');
     await checkLocation();
     if (my !== session || id !== activeScanId) return;
@@ -898,7 +872,7 @@ async function runFaceScan(id, my) {
     const recorded = await verifyAndSubmit(id, my);
     if (my === session && id === activeScanId && recorded) {
       loadRecent();
-      loadEmployees().catch(() => {});   // refresh saved face samples (a new one may have been learned)
+      loadEmployees().catch(() => {});
       stopCamera();
       $('camPane').hidden = true;
       $('scanActions').hidden = true;
@@ -930,10 +904,7 @@ function updateIdentitySubmit() {
 }
 $('identityInput').addEventListener('input', updateIdentitySubmit);
 
-/* ---------- On-screen keypad for the employee ID ----------
-   Digits 1-9 and 0, prefix keys, and backspace. A prefix key replaces any prefix already typed.
-   Edit ID_PREFIXES to change the prefix keys. */
-const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC_B', 'SCI_B'];
+const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC-B', 'SCI-B'];
 (function buildKeypad() {
   const pad = $('keypad'), input = $('identityInput');
   const changed = () => { input.dispatchEvent(new Event('input')); $('identityError').textContent = ''; };
@@ -1009,7 +980,7 @@ $('identityForm').onsubmit = async event => {
 $('retryScan').onclick = () => {
   if (activeScanId) runFaceScan(activeScanId, session);
 };
-$('cancelScan').onclick = () => {   // "Edit Details": back to the employee ID keypad
+$('cancelScan').onclick = () => {
   if (busy) return;
   activeScanId = null;
   stopCamera(); say('');
@@ -1023,22 +994,19 @@ $('cancelScan').onclick = () => {   // "Edit Details": back to the employee ID k
   badge('Enter employee ID to begin');
 };
 
-/* Enrollment (with liveness + duplicate ID / name / face checks) */
 const normalizeEmployeeId = value => value.replace(/\s+/g, '').toLocaleUpperCase();
 const properCaseName = value => value.replace(/\s+/g, ' ').trim().toLocaleLowerCase().replace(/(^|[\s'-])(\p{L})/gu,
   (_, separator, letter) => separator + letter.toLocaleUpperCase());
 const normName = n => n.toLowerCase().replace(/\s+/g, ' ').trim();
 const NAME_FIELDS = ['empFirst', 'empMiddle', 'empLast'];
 const findKnownId = id => Object.keys(names).find(k => normalizeEmployeeId(k) === id);
-let autoFilledId = null;   // set while the names on screen were loaded from the database
+let autoFilledId = null;
 
 function setNameLock(locked) { NAME_FIELDS.forEach(f => { $(f).readOnly = locked; }); }
 function clearNames() { NAME_FIELDS.forEach(f => { $(f).value = ''; }); }
 function updateEnrollButton() {
   $('btnEnroll').disabled = !['pin', 'empId', 'empFirst', 'empLast'].every(id => $(id).value.trim());
 }
-/* If the typed employee ID is already in the database, show its stored first / middle / last
-   name (locked) so the person can go straight to the face scan. */
 function syncKnownEmployee() {
   const id = normalizeEmployeeId($('empId').value);
   const known = id ? findKnownId(id) : undefined;
@@ -1061,7 +1029,6 @@ function syncKnownEmployee() {
 ['pin', 'empId', 'empFirst', 'empMiddle', 'empLast'].forEach(id => $(id).addEventListener('input', updateEnrollButton));
 $('empId').addEventListener('input', syncKnownEmployee);
 
-/* Enrollment screens: details form  <->  camera + [Face Scan] [Edit Details] */
 function showEnrollCamera(on) {
   $('camPane').hidden = !on;
   $('enrollForm').hidden = on;
@@ -1075,7 +1042,6 @@ async function startEnroll() {
   let middle = properCaseName($('empMiddle').value);
   let last = properCaseName($('empLast').value);
   $('empId').value = id;
-  // Shows in the form message, and on the camera badge when the camera is visible
   const msg = (text, cls) => { $('enrollMsg').textContent = text; if (text && !$('camPane').hidden) badge(text, cls); };
   if (!pin || !id || !first || !last) { msg('Please fill in PIN, ID, first name and last name.'); return; }
   const my = session;
@@ -1083,10 +1049,9 @@ async function startEnroll() {
   ['btnEnroll', 'retryEnroll', 'editEnroll'].forEach(b => { $(b).disabled = true; });
   try {
     msg('Checking the database…');
-    await loadEmployees(); // latest list, in case another device enrolled someone
+    await loadEmployees();
     if (my !== session) return;
 
-    // Employee ID already in the database: use the stored names and go straight to the face scan
     const knownId = findKnownId(id);
     const stored = knownId !== undefined ? employeeDetails[knownId] : null;
     if (stored && (stored.first || stored.last)) {
@@ -1094,7 +1059,7 @@ async function startEnroll() {
       $('empFirst').value = first; $('empMiddle').value = middle; $('empLast').value = last;
       setNameLock(true); autoFilledId = knownId;
     }
-    const fullName = buildFullName(first, middle, last);   // saved in column B
+    const fullName = buildFullName(first, middle, last);
 
     if (knownId === undefined) {
       const nameTaken = Object.keys(employeeDetails).find(k => {
@@ -1109,7 +1074,6 @@ async function startEnroll() {
       }
     }
 
-    // Checks passed: switch to the camera view
     showEnrollCamera(true);
     if (!stream) { badge('Starting camera…'); await startCamera(); }
     if (my !== session) { stopCamera(); return; }
@@ -1134,7 +1098,6 @@ async function startEnroll() {
 
     if (enrollmentMatcher) {
       const m = enrollmentMatcher.findBestMatch(Float32Array.from(avg));
-      // A match to the same employee ID is fine (face scan for an existing ID); a match to someone else is not.
       if (m.label !== 'unknown' && m.label !== knownId) {
         const t = 'This face is already enrolled as ' + names[m.label] + ' (ID ' + m.label + ').';
         msg(t, 'warn');
@@ -1145,7 +1108,6 @@ async function startEnroll() {
 
     badge('Saving enrollment…', 'saving');
     say('Saving enrollment… Please wait.', true);
-    // name = column B ("LAST, FIRST MIDDLE"); first / middle / last = columns F / G / H
     const r = await gs('enrollEmployee', pin, knownId !== undefined ? knownId : id, fullName, avg, first, middle, last);
     msg(r.message, r.ok ? 'ok' : 'warn');
     if (r.ok) {
@@ -1177,30 +1139,56 @@ $('editEnroll').onclick = () => {
   updateEnrollButton();
 };
 
-/* ---------- Latest attendance records (auto-scrolling list on the Home and Scan screens) ----------
-   Shows the 5 newest records from the Attendance sheet. If they do not fit the box, the list scrolls
-   by itself and loops. Touching, dragging or using the mouse wheel pauses it for a few seconds. */
 let recentKey = '';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-function recentRow(r) {
+function recentRow(r, isLatest) {
   const row = document.createElement('div');
   row.className = 'recent-row';
+
+  const tagCol = document.createElement('div');
+  tagCol.className = 'recent-tag-col';
+
+  if (isLatest) {
+    const latest = document.createElement('span');
+    latest.className = 'recent-latest';
+    latest.textContent = 'LATEST';
+    tagCol.appendChild(latest);
+  }
+
   const tag = document.createElement('span');
   const type = r.type === 'OUT' ? 'OUT' : 'IN';
-  tag.className = 'recent-tag ' + type; tag.textContent = type;
-  const name = document.createElement('span');
-  name.className = 'recent-name'; name.textContent = r.name || r.id;
+  tag.className = 'recent-tag ' + type;
+  tag.textContent = type;
+  tagCol.appendChild(tag);
+
+  const person = document.createElement('div');
+  person.className = 'recent-person';
+
+  const name = document.createElement('div');
+  name.className = 'recent-name';
+  name.textContent = r.name || r.id;
+  person.appendChild(name);
+
+  if (r.id) {
+    const id = document.createElement('div');
+    id.className = 'recent-id';
+    id.textContent = 'ID: ' + r.id;
+    person.appendChild(id);
+  }
+
   const time = document.createElement('span');
   time.className = 'recent-time';
   const t = document.createElement('div'); t.textContent = r.time;
   const d = document.createElement('div'); d.textContent = r.date;
   time.append(t, d);
-  row.append(tag, name, time);
+
+  row.append(tagCol, person, time);
   return row;
 }
+
 function renderRecent(records) {
   const key = JSON.stringify(records);
-  if (key === recentKey) return;           // nothing new: keep the current scroll position
+  if (key === recentKey) return;
   recentKey = key;
   document.querySelectorAll('.recent-view').forEach(view => {
     const list = view.firstElementChild;
@@ -1213,7 +1201,7 @@ function renderRecent(records) {
       list.appendChild(e);
       return;
     }
-    records.forEach(r => list.appendChild(recentRow(r)));
+    records.forEach((r, i) => list.appendChild(recentRow(r, i === 0)));
   });
 }
 async function loadRecent() {
@@ -1225,17 +1213,17 @@ async function loadRecent() {
 function recentTick() {
   document.querySelectorAll('.recent-view').forEach(v => {
     const n = Number(v.dataset.n || 0);
-    if (!n || !v.offsetParent) return;      // empty or hidden
+    if (!n || !v.offsetParent) return;
     const list = v.firstElementChild, kids = list.children;
     const cloned = kids.length > n;
     const last = kids[n - 1];
-    const cycle = last.offsetTop + last.offsetHeight + 6 - kids[0].offsetTop;   // height of one full set of rows
-    if (cycle + 16 <= v.clientHeight) {      // everything fits: no scrolling needed
+    const cycle = last.offsetTop + last.offsetHeight + 6 - kids[0].offsetTop;
+    if (cycle + 16 <= v.clientHeight) {
       while (list.children.length > n) list.lastChild.remove();
       v.scrollTop = 0; v._pos = 0;
       return;
     }
-    if (!cloned) for (let i = 0; i < n; i++) list.appendChild(kids[i].cloneNode(true));   // copy for a seamless loop
+    if (!cloned) for (let i = 0; i < n; i++) list.appendChild(kids[i].cloneNode(true));
     if (reducedMotion || v._paused) return;
     v._pos = (v._pos || 0) + 0.1;
     if (v._pos >= cycle) v._pos -= cycle;
@@ -1253,7 +1241,6 @@ document.querySelectorAll('.recent-view').forEach(v => {
 requestAnimationFrame(recentTick);
 setInterval(() => { if (!document.hidden && !busy && (mode === 'home' || mode === 'scan')) loadRecent(); }, 20000);
 
-/* Init: load models + employees on the home screen; camera starts only after a choice */
 (async function init() {
   updateHomeActions();
   loadBlinker().catch(e => console.warn('MediaPipe blink detector unavailable, using fallback', e));
