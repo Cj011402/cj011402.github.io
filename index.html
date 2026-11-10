@@ -56,9 +56,13 @@
   #result .name { font-size:20px; margin-top:4px; } #result .time { color:var(--muted); margin-top:2px; }
   .gps-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; padding:0 8px; }
   .gps-status { min-width:0; font-size:13px; color:var(--muted); text-align:center; overflow-wrap:anywhere; }
-  #retryGPS { display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; padding:7px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; }
+  
+  /* Refresh GPS button with border and box-shadow removed */
+  #retryGPS { display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; padding:7px; border:none; background:transparent; color:var(--muted); cursor:pointer; box-shadow:none; }
   #retryGPS svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  #retryGPS:hover { color:var(--text); transform:none; filter:none; box-shadow:none; background:transparent; }
   #retryGPS:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+
   .form { margin-top:14px; background:var(--card); padding:clamp(12px,3vw,20px); border-radius:12px; display:grid; gap:clamp(8px,2vw,12px); min-width:0; }
   .form input { width:100%; min-width:0; padding:11px; border-radius:8px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:clamp(14px,3.8vw,16px); }
   .form input[readonly] { opacity:.7; cursor:not-allowed; }
@@ -279,19 +283,131 @@
   body[data-mode="scan"] #identityForm { flex:none; }
   body[data-mode="scan"] #recentScan { flex:1 1 0; min-height:96px; }
   #scanPane:has(#identityForm[hidden]) #recentScan { display:none; }
+
+/* ===================================================================
+   ADAPTIVE LAYOUT: phone / tablet / laptop  x  portrait / landscape
+   =================================================================== */
+body{display:flex;flex-direction:column}
+header,.gps-row{flex:none}
+
+/* ---------- HOME: recent list fills all the space below the buttons ---------- */
+#home{flex:1 1 auto;display:flex;flex-direction:column;gap:clamp(10px,2.4dvh,16px);
+  width:100%;max-width:560px;min-height:0;margin:0 auto;
+  padding:clamp(8px,2dvh,16px) clamp(12px,4vw,20px) max(14px,env(safe-area-inset-bottom,0px))}
+.home-main{display:grid;gap:clamp(10px,3vw,14px);align-content:start}
+#recentHome{flex:1 1 0;height:auto;min-height:220px}
+.recent-view{flex:1 1 0}
+
+/* ---------- Touch devices: bigger tap targets ---------- */
+@media (pointer:coarse){
+  .back,#btnTheme{min-height:44px}
+  #retryGPS{width:44px;height:44px}
+}
+
+/* ---------- TABLET PORTRAIT ---------- */
+@media (orientation:portrait) and (min-width:700px){
+  #home{max-width:720px}
+  .choice{padding:22px 26px}
+  .choice .big{font-size:30px}
+  .choice .sub{font-size:15px}
+  .recent-row{padding:10px 14px}
+  .recent-name{font-size:16px}
+  body[data-mode] #app{max-width:760px}
+  body .form .keypad button{min-height:clamp(52px,7dvh,68px)}
+}
+
+/* ---------- LANDSCAPE (phone / tablet / laptop): two columns ---------- */
+@media (orientation:landscape) and (min-width:640px){
+  /* Home: buttons left, recent list right at full height */
+  #home{flex-direction:row;align-items:stretch;max-width:1180px;gap:clamp(14px,3vw,28px)}
+  .home-main{flex:0 0 clamp(280px,40%,460px);align-content:center}
+  #recentHome{flex:1 1 0;min-height:0}
+
+  /* Scan / Enroll: camera left, controls right */
+  body[data-mode] #app{flex-direction:row;align-items:stretch;max-width:1280px;gap:clamp(10px,2vw,20px)}
+  body[data-mode] .cam{flex:1 1 0;min-width:0;height:auto;
+    --face-oval-ry:39%;--face-guide-height:78%;
+    --face-oval-rx:min(calc((100dvh - 120px) * .29),32%);
+    --face-guide-width:min(calc((100dvh - 120px) * .585),64%)}
+  body[data-mode] #scanPane,
+  body[data-mode] #enrollPane{flex:0 0 clamp(260px,34vw,440px);min-width:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+  body[data-mode] .scan-actions{grid-template-columns:1fr}
+  body[data-mode] .scan-actions button{min-height:44px}
+  body[data-mode] #app:not(:has(#camPane[hidden])) #scanPane,
+  body[data-mode] #app:not(:has(#camPane[hidden])) #enrollPane{justify-content:center}
+
+  /* Camera not open yet: use the whole width */
+  body[data-mode] #app:has(#camPane[hidden]){justify-content:center}
+  body[data-mode] #app:has(#camPane[hidden]) #enrollPane{flex:1 1 auto;max-width:760px}
+  body[data-mode="scan"] #scanPane:has(#identityForm:not([hidden])){
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);
+    gap:clamp(10px,2vw,20px);max-width:1000px;margin:0 auto}
+
+  /* Enroll form in two columns */
+  #enrollForm{grid-template-columns:1fr 1fr}
+  #enrollForm #empId{order:1}
+  #enrollForm #pin{order:2}
+  #enrollForm #empFirst{order:3}
+  #enrollForm #empLast{order:4}
+  #enrollForm #empMiddle{order:5;grid-column:1 / -1}
+  #enrollForm #btnEnroll{order:6;grid-column:1 / -1}
+  #enrollForm #enrollMsg{order:7;grid-column:1 / -1}
+}
+
+/* ---------- LANDSCAPE PHONE (short screens): compact so nothing needs scrolling ---------- */
+@media (orientation:landscape) and (max-height:520px){
+  #home{padding-top:6px;padding-bottom:8px}
+  .home-main{gap:8px;align-content:start}
+  #home .lead{font-size:12px;margin:0}
+  .choice{padding:8px 14px;gap:12px}
+  .choice .big{font-size:20px}
+  .choice .sub{font-size:11px}
+  .recent-title{padding:6px 10px;font-size:12px}
+  .recent-row{padding:6px 8px;margin-bottom:4px}
+
+  .keypad{grid-template-columns:repeat(5,1fr)}
+  body .form .keypad button{min-height:34px;font-size:18px}
+  body .form .keypad button.pre{font-size:10px;white-space:nowrap;overflow:hidden}
+  #identityInput{font-size:18px}
+}
+
+/* ---------- TABLET / LAPTOP LANDSCAPE: recent list beside the camera ---------- */
+@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
+  body[data-mode="scan"] #scanPane:has(#identityForm[hidden]) #recentScan{display:flex;flex:1 1 0;min-height:140px}
+}
+
+/* ---------- LARGE SCREENS ---------- */
+@media (min-width:1100px) and (min-height:700px){
+  .choice .big{font-size:30px}
+  .choice .sub{font-size:15px}
+  .recent-title{font-size:14px;padding:10px 14px}
+  .recent-row{padding:10px 14px}
+  .recent-name{font-size:16px}
+  .recent-id,.recent-time{font-size:13px}
+}
+/* ---------- Nudge: point users to Face Scan after a failed attempt ---------- */
+@keyframes nudgePulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 75%,transparent)}70%,100%{box-shadow:0 0 0 16px transparent}}
+@keyframes nudgeBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.scan-actions button.attn{border-color:var(--ok);animation:nudgePulse 1.4s ease-out infinite,nudgeBob 1.4s ease-in-out infinite}
+.scan-actions button.attn .face-scan-icon::after{animation-duration:.7s}
+@media (prefers-reduced-motion:reduce){
+  .scan-actions button.attn{animation:none;outline:3px solid var(--ok);outline-offset:3px}
+}
 </style>
 </head>
 <body>
 <header><div class="hleft"><button id="btnBack" class="back" hidden><svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Back</button><h1 id="appTitle">GSDC In &amp; Out</h1></div><div id="clock"></div><div class="hright"><button id="btnTheme" type="button" aria-label="Switch dark / light mode"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2m16 0h2"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5Z"/></svg><span class="theme-thumb"></span></span><span id="themeLabel"></span></button></div></header>
 
-<div class="gps-row"><div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div><button type="button" id="retryGPS" aria-label="Retry GPS location" title="Retry GPS location" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg></button></div>
+<div class="gps-row"><div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div><button type="button" id="retryGPS" aria-label="Retry GPS location" title="Retry GPS location" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></button></div>
 
 <section id="home">
+  <div class="home-main">
   <p class="lead">Please use the device in the guard house to In / Out.</p>
   <p id="homeDistance" hidden></p>
   <button class="choice scan" id="chooseScan"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M20 28c0-8 5-13 12-13s12 5 12 13v5c0 9-5 15-12 15s-12-6-12-15v-5Z" stroke="currentColor" stroke-width="2.5"/><path d="M25 29h.1M39 29h.1M28 39c2.5 2 5.5 2 8 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Scan</span><span class="sub">Face scan for Time In / Time Out</span></span></button>
   <button class="choice enroll" id="chooseEnroll"><span class="scan-visual" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 21V13a4 4 0 0 1 4-4h8M43 9h8a4 4 0 0 1 4 4v8M55 43v8a4 4 0 0 1-4 4h-8M21 55h-8a4 4 0 0 1-4-4v-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="28" cy="25" r="7" stroke="currentColor" stroke-width="2.5"/><path d="M15 46v-3a9 9 0 0 1 9-9h8M43 25v13m-6.5-6.5h13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span class="scan-line"></span></span><span class="choice-copy"><span class="big">Enroll</span><span class="sub">Register a new employee's face</span></span></button>
   <div id="homeMsg" role="status" aria-live="polite"><span id="homeSpinner" class="loading-spinner" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="face-outline" d="M5 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H7a2 2 0 0 1-2-2v-2M8 10v2m8-2v2m-8 3c2.5 2 5.5 2 8 0"/></svg><span class="face-scan"></span></span><span id="homeMsgText">Loading…</span><span id="homeDots" class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+  </div>
   <div class="recent" id="recentHome" aria-label="Most recent entries."><div class="recent-title">Most recent entries.</div><div class="recent-view"><div class="recent-list"><div class="recent-empty">Loading…</div></div></div></div>
 </section>
 
@@ -857,6 +973,8 @@ async function verifyAndSubmit(id, my) {
 async function runFaceScan(id, my) {
   if (busy || mode !== 'scan' || id !== activeScanId) return;
   busy = true;
+  clearNudge();
+  let recorded = false;
   $('retryScan').disabled = true;
   $('cancelScan').disabled = true;
   try {
@@ -869,7 +987,7 @@ async function runFaceScan(id, my) {
       await startCamera();
     }
     if (my !== session || id !== activeScanId) { stopCamera(); return; }
-    const recorded = await verifyAndSubmit(id, my);
+    recorded = await verifyAndSubmit(id, my);
     if (my === session && id === activeScanId && recorded) {
       loadRecent();
       loadEmployees().catch(() => {});
@@ -895,6 +1013,7 @@ async function runFaceScan(id, my) {
     if (my === session) {
       $('retryScan').disabled = false;
       $('cancelScan').disabled = false;
+      if (!recorded && id === activeScanId && !$('scanActions').hidden) nudge('retryScan');
     }
   }
 }
@@ -982,6 +1101,7 @@ $('retryScan').onclick = () => {
 };
 $('cancelScan').onclick = () => {
   if (busy) return;
+  clearNudge();
   activeScanId = null;
   stopCamera(); say('');
   $('camPane').hidden = true;
@@ -1047,6 +1167,7 @@ async function startEnroll() {
   const my = session;
   busy = true;
   ['btnEnroll', 'retryEnroll', 'editEnroll'].forEach(b => { $(b).disabled = true; });
+  let enrolled = false;
   try {
     msg('Checking the database…');
     await loadEmployees();
@@ -1111,6 +1232,7 @@ async function startEnroll() {
     const r = await gs('enrollEmployee', pin, knownId !== undefined ? knownId : id, fullName, avg, first, middle, last);
     msg(r.message, r.ok ? 'ok' : 'warn');
     if (r.ok) {
+      enrolled = true;
       showModal({ type: 'success', icon: '🎉', title: 'Congratulations!',
         message: fullName + ' (ID: ' + (knownId !== undefined ? knownId : id) + ') has been enrolled successfully!' });
       stopCamera();
@@ -1128,6 +1250,7 @@ async function startEnroll() {
     busy = false;
     ['retryEnroll', 'editEnroll'].forEach(b => { $(b).disabled = false; });
     updateEnrollButton();
+    if (my === session && !enrolled && !$('enrollActions').hidden) nudge('retryEnroll');
   }
 }
 $('btnEnroll').onclick = startEnroll;
@@ -1263,6 +1386,14 @@ setInterval(() => { if (!document.hidden && !busy && (mode === 'home' || mode ==
     setHomeStatus('Error: ' + (e.message || e), false);
   }
 })();
+
+function nudge(btnId) {
+  const b = $(btnId);
+  b.classList.remove('attn'); void b.offsetWidth; b.classList.add('attn');
+}
+function clearNudge() {
+  ['retryScan', 'retryEnroll'].forEach(i => $(i).classList.remove('attn'));
+}
 </script>
   <canvas id="confetti-canvas"></canvas>
   <div id="appModal" class="modal-overlay" style="display:none;">
