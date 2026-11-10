@@ -388,10 +388,19 @@ header,.gps-row{flex:none}
 /* ---------- Nudge: point users to Face Scan after a failed attempt ---------- */
 @keyframes nudgePulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 75%,transparent)}70%,100%{box-shadow:0 0 0 16px transparent}}
 @keyframes nudgeBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-.scan-actions button.attn{border-color:var(--ok);animation:nudgePulse 1.4s ease-out infinite,nudgeBob 1.4s ease-in-out infinite}
-.scan-actions button.attn .face-scan-icon::after{animation-duration:.7s}
+.scan-actions button.attn, #identitySubmit.attn {
+  border-color: var(--ok);
+  animation: nudgePulse 1.4s ease-out infinite, nudgeBob 1.4s ease-in-out infinite;
+}
+.scan-actions button.attn .face-scan-icon::after, #identitySubmit.attn .face-scan-icon::after {
+  animation-duration: .7s;
+}
 @media (prefers-reduced-motion:reduce){
-  .scan-actions button.attn{animation:none;outline:3px solid var(--ok);outline-offset:3px}
+  .scan-actions button.attn, #identitySubmit.attn {
+    animation: none;
+    outline: 3px solid var(--ok);
+    outline-offset: 3px;
+  }
 }
 </style>
 </head>
@@ -1013,7 +1022,15 @@ async function runFaceScan(id, my) {
     if (my === session) {
       $('retryScan').disabled = false;
       $('cancelScan').disabled = false;
-      if (!recorded && id === activeScanId && !$('scanActions').hidden) nudge('retryScan');
+      $('identitySubmit').disabled = !$('identityInput').value.trim();
+
+      if (!recorded && id === activeScanId) {
+        if (!$('scanActions').hidden) {
+          nudge('retryScan');
+        } else if (!$('identityForm').hidden) {
+          nudge('identitySubmit');
+        }
+      }
     }
   }
 }
@@ -1392,7 +1409,10 @@ function nudge(btnId) {
   b.classList.remove('attn'); void b.offsetWidth; b.classList.add('attn');
 }
 function clearNudge() {
-  ['retryScan', 'retryEnroll'].forEach(i => $(i).classList.remove('attn'));
+  ['retryScan', 'retryEnroll', 'identitySubmit'].forEach(i => {
+    const el = $(i);
+    if (el) el.classList.remove('attn');
+  });
 }
 </script>
   <canvas id="confetti-canvas"></canvas>
