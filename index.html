@@ -1040,7 +1040,7 @@ function updateIdentitySubmit() {
 }
 $('identityInput').addEventListener('input', updateIdentitySubmit);
 
-const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC-B', 'SCI-B'];
+const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC_B', 'SCI_B'];
 (function buildKeypad() {
   const pad = $('keypad'), input = $('identityInput');
   const changed = () => { input.dispatchEvent(new Event('input')); $('identityError').textContent = ''; };
