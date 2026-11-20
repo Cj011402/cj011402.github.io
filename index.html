@@ -29,8 +29,16 @@
   header h1 { font-size:clamp(15px,4vw,18px); margin:0; }
   #clock { font-variant-numeric:tabular-nums; color:var(--muted); font-size:clamp(10px,3.7vw,14px); white-space:nowrap; }
   .hright { display:flex; align-items:center; justify-self:end; gap:10px; }
-  .guard-toggle { border:1px solid var(--border); background:var(--card); color:var(--text); padding:6px 9px; border-radius:999px; font-size:12px; cursor:pointer; white-space:nowrap; }
-  .guard-toggle:disabled { opacity:.6; }
+  .guard-menu-wrap { position:relative; }
+  .settings-toggle { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; padding:7px; border:1px solid var(--border); border-radius:50%; background:var(--card); color:var(--text); cursor:pointer; }
+  .settings-toggle svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .settings-toggle[data-signed-in="true"] { border-color:var(--ok); }
+  .guard-menu { position:absolute; z-index:20; top:calc(100% + 6px); right:0; display:grid; gap:5px; width:184px; padding:8px; border:1px solid var(--border); border-radius:10px; background:var(--card); box-shadow:0 6px 18px rgba(0,0,0,.24); }
+  .guard-menu-label { padding:2px 4px; color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  .guard-menu button { padding:8px 10px; border:0; border-radius:7px; background:var(--field); color:var(--text); text-align:left; font-size:13px; cursor:pointer; }
+  .guard-menu button:disabled { opacity:.45; cursor:not-allowed; }
+  .guard-menu .menu-separator { height:1px; margin:3px 0; background:var(--border); }
+  .guard-menu #btnTheme { width:100%; justify-content:space-between; }
   #btnTheme { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); background:var(--card); color:var(--text); padding:6px 10px; border-radius:999px; font-size:14px; cursor:pointer; }
   .theme-track { position:relative; display:inline-flex; align-items:center; justify-content:space-between; width:44px; height:24px; padding:0 5px; border-radius:999px; background:#64748b; color:#fff; }
   .theme-track svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -58,6 +66,8 @@
   #result .name { font-size:20px; margin-top:4px; } #result .time { color:var(--muted); margin-top:2px; }
   .gps-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; padding:0 8px; }
   .gps-status { min-width:0; font-size:13px; color:var(--muted); text-align:center; overflow-wrap:anywhere; }
+  .gps-nearby { display:inline-flex; flex:none; align-items:center; gap:4px; color:var(--muted); font-size:13px; white-space:nowrap; }
+  .gps-nearby svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 
   /* Refresh GPS button with border and box-shadow removed */
   #retryGPS { display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; padding:7px; border:none; background:transparent; color:var(--muted); cursor:pointer; box-shadow:none; }
@@ -419,9 +429,9 @@ header,.gps-row{flex:none}
 </style>
 </head>
 <body>
-<header><div class="hleft"><button id="btnBack" class="back" hidden><svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Back</button><h1 id="appTitle">GSDC In &amp; Out</h1></div><div id="clock"></div><div class="hright"><button type="button" id="guardToggle" class="guard-toggle" aria-pressed="false">Guard sign in</button><button id="btnTheme" type="button" aria-label="Switch dark / light mode"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2m16 0h2"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 0 1 0 20.5 15.5Z"/></svg><span class="theme-thumb"></span></span><span id="themeLabel"></span></button></div></header>
+<header><div class="hleft"><button id="btnBack" class="back" hidden><svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Back</button><h1 id="appTitle">GSDC In &amp; Out</h1></div><div id="clock"></div><div class="hright"><div id="guardMenuWrap" class="guard-menu-wrap"><button type="button" id="settingsToggle" class="settings-toggle" title="Settings" aria-label="Open settings" aria-expanded="false" aria-controls="guardMenu" data-signed-in="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="m19.14 12.94.02-.94-.02-.94 2.03-1.58-2-3.46-2.39.96a7.04 7.04 0 0 0-1.63-.94L14.79 3h-4l-.36 3.04a7.04 7.04 0 0 0-1.63.94l-2.39-.96-2 3.46 2.03 1.58-.02.94.02.94-2.03 1.58 2 3.46 2.39-.96c.49.39 1.03.71 1.63.94L10.79 21h4l.36-3.04c.6-.23 1.14-.55 1.63-.94l2.39.96 2-3.46-2.03-1.58Z"/></svg></button><div id="guardMenu" class="guard-menu" hidden role="group" aria-label="Settings"><div class="guard-menu-label">Guard access</div><button type="button" id="guardSignIn">Sign in</button><button type="button" id="guardSignOut" disabled>Sign out</button><div class="menu-separator" aria-hidden="true"></div><button id="btnTheme" type="button" aria-label="Switch dark / light mode"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2m16 0h2"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 0 1 0 20.5 15.5Z"/></svg><span class="theme-thumb"></span></span><span id="themeLabel"></span></button></div></div></div></header>
 
-<div class="gps-row"><div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div><button type="button" id="retryGPS" aria-label="Retry GPS location" title="Retry GPS location" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></button></div>
+<div class="gps-row"><div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div><span id="gpsNearby" class="gps-nearby" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span id="gpsNearbyText"></span></span><button type="button" id="retryGPS" aria-label="Retry GPS location" title="Retry GPS location" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></button></div>
 
 <section id="home">
   <div class="home-main">
@@ -504,7 +514,11 @@ header,.gps-row{flex:none}
 <script>
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
 const $ = id => document.getElementById(id);
-const setGPSStatus = text => { $('gps').textContent = text; };
+const setGPSStatus = text => {
+  $('gps').textContent = text;
+  if (text.indexOf('GPS:') === 0) updateNearbyDistance();
+  else $('gpsNearby').hidden = true;
+};
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 let enrollmentMatcher = null, names = {}, employeeDetails = {}, employeeDescriptors = new Map();
@@ -582,6 +596,27 @@ function distanceM(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
+function updateNearbyDistance() {
+  const nearby = $('gpsNearby');
+  if (!pos || !LOCATIONS.length) {
+    nearby.hidden = true;
+    return;
+  }
+  let closest = null;
+  LOCATIONS.forEach(location => {
+    const distance = distanceM(pos.lat, pos.lng, location.lat, location.lng);
+    if (!closest || distance < closest.distance) closest = { location, distance };
+  });
+  if (!closest) {
+    nearby.hidden = true;
+    return;
+  }
+  const meters = Math.round(closest.distance);
+  $('gpsNearbyText').textContent = '(±' + meters + ' m)';
+  nearby.title = closest.location.name;
+  nearby.setAttribute('aria-label', meters + ' meters from ' + closest.location.name);
+  nearby.hidden = false;
+}
 async function checkLocation() {
   const loc = await getGPSForScan();
   if (!LOCATIONS.length) throw new Error('No scan locations are configured. Please contact the administrator.');
@@ -612,7 +647,7 @@ async function requestHomeGPS() {
     setHomeStatus('', false);
   } catch (e) {
     if (e.outside) {
-      $('homeDistance').textContent = '(About ' + Math.round(e.distance) + ' m from ' + e.place + '.)';
+      $('homeDistance').textContent = '(Outside the allowed range for ' + e.place + '.)';
       $('homeDistance').hidden = false;
       setHomeStatus('', false);
     } else {
@@ -687,7 +722,11 @@ $('dialogBox').addEventListener('submit', e => {
   closeDialog($('dialogInput').hidden ? true : $('dialogInput').value);
 });
 $('dialogCancel').onclick = () => closeDialog(null);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && dialogResolve) closeDialog(null); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (dialogResolve) closeDialog(null);
+  closeGuardMenu();
+});
 
 function paintThemeBtn() {
   const dark = document.documentElement.dataset.theme === 'dark';
@@ -870,6 +909,7 @@ async function loadEmployees() {
   if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
   cfg = Object.assign({ threshold: 0.5, scanThreshold: 0.55, learnMin: 0.25, learnMax: 0.5 }, boot.config || {});
   LOCATIONS = boot.locations || [];
+  updateNearbyDistance();
   names = {};
   employeeDetails = {};
   enrollmentMatcher = null;
@@ -1473,13 +1513,21 @@ async function loadRecent() {
    A guard signs in with the guard PIN and can flip IN <-> OUT on the latest 20 entries.
    The server re-checks the PIN on every change and refuses entries that are no longer in the latest 20. */
 let guardTimer = null;
+let guardBusy = false;
+function closeGuardMenu() {
+  $('guardMenu').hidden = true;
+  $('settingsToggle').setAttribute('aria-expanded', 'false');
+  $('settingsToggle').setAttribute('aria-label', 'Open settings');
+}
 function updateGuardButton() {
-  $('guardToggle').textContent = guardPin ? 'Guard sign out' : 'Guard sign in';
-  $('guardToggle').setAttribute('aria-pressed', guardPin ? 'true' : 'false');
+  $('settingsToggle').dataset.signedIn = guardPin ? 'true' : 'false';
+  $('guardSignIn').disabled = !!guardPin || guardBusy;
+  $('guardSignOut').disabled = !guardPin || guardBusy;
 }
 function guardSignOut() {
   clearTimeout(guardTimer);
   guardPin = '';
+  closeGuardMenu();
   updateGuardButton();
   renderRecent(recentRecords);
 }
@@ -1520,8 +1568,9 @@ async function changeRecentEntry(row) {
     if (button) button.disabled = false;
   }
 }
-$('guardToggle').onclick = async () => {
-  if (guardPin) { guardSignOut(); return; }
+async function guardSignIn() {
+  closeGuardMenu();
+  if (guardPin || guardBusy) return;
   const entered = await askDialog({
     title: 'Guard sign in',
     message: 'Enter the guard PIN to change IN / OUT on recent entries.',
@@ -1531,9 +1580,8 @@ $('guardToggle').onclick = async () => {
   });
   const pin = entered === null || entered === true ? '' : String(entered).trim();
   if (!pin) return;
-  const button = $('guardToggle');
-  button.disabled = true;
-  button.textContent = 'Checking…';
+  guardBusy = true;
+  updateGuardButton();
   try {
     const result = await gs('verifyGuardPin', pin);
     if (!result.ok) {
@@ -1547,10 +1595,25 @@ $('guardToggle').onclick = async () => {
     console.error('Could not verify guard PIN', e);
     showModal({ type: 'warning', icon: '⚠️', title: 'Guard Sign-In Failed', message: e.message || String(e) });
   } finally {
-    button.disabled = false;
+    guardBusy = false;
     updateGuardButton();
   }
+}
+$('settingsToggle').onclick = () => {
+  const menu = $('guardMenu');
+  menu.hidden = !menu.hidden;
+  $('settingsToggle').setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+  $('settingsToggle').setAttribute('aria-label', menu.hidden ? 'Open settings' : 'Close settings');
+  if (!menu.hidden) (guardPin ? $('guardSignOut') : $('guardSignIn')).focus();
 };
+$('guardSignIn').onclick = guardSignIn;
+$('guardSignOut').onclick = () => {
+  closeGuardMenu();
+  guardSignOut();
+};
+document.addEventListener('click', event => {
+  if (!$('guardMenuWrap').contains(event.target)) closeGuardMenu();
+});
 updateGuardButton();
 
 function recentTick() {
