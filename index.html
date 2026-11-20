@@ -29,6 +29,8 @@
   header h1 { font-size:clamp(15px,4vw,18px); margin:0; }
   #clock { font-variant-numeric:tabular-nums; color:var(--muted); font-size:clamp(10px,3.7vw,14px); white-space:nowrap; }
   .hright { display:flex; align-items:center; justify-self:end; gap:10px; }
+  .guard-toggle { border:1px solid var(--border); background:var(--card); color:var(--text); padding:6px 9px; border-radius:999px; font-size:12px; cursor:pointer; white-space:nowrap; }
+  .guard-toggle:disabled { opacity:.6; }
   #btnTheme { display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); background:var(--card); color:var(--text); padding:6px 10px; border-radius:999px; font-size:14px; cursor:pointer; }
   .theme-track { position:relative; display:inline-flex; align-items:center; justify-content:space-between; width:44px; height:24px; padding:0 5px; border-radius:999px; background:#64748b; color:#fff; }
   .theme-track svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -56,7 +58,7 @@
   #result .name { font-size:20px; margin-top:4px; } #result .time { color:var(--muted); margin-top:2px; }
   .gps-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; padding:0 8px; }
   .gps-status { min-width:0; font-size:13px; color:var(--muted); text-align:center; overflow-wrap:anywhere; }
-  
+
   /* Refresh GPS button with border and box-shadow removed */
   #retryGPS { display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; padding:7px; border:none; background:transparent; color:var(--muted); cursor:pointer; box-shadow:none; }
   #retryGPS svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
@@ -207,6 +209,17 @@
   @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
   @keyframes scaleIn { from { transform:scale(0.8); opacity:0; } to { transform:scale(1); opacity:1; } }
   @keyframes bounce { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+
+  /* In-page dialog (replaces prompt() / confirm(), which many kiosk / embedded browsers block) */
+  .dialog-overlay { z-index:1002; }
+  .dialog-overlay .modal { padding:28px 22px; }
+  .dialog-overlay .modal-title { font-size:22px; }
+  .dialog-overlay .modal-message { margin-bottom:18px; }
+  .modal-input { width:100%; padding:12px; margin:0 0 18px; border-radius:10px; border:1px solid var(--border); background:var(--field); color:var(--text); font-size:20px; text-align:center; letter-spacing:.08em; }
+  .modal-actions { display:flex; gap:10px; justify-content:center; }
+  .modal-actions .modal-btn { flex:1; padding:12px 10px; }
+  .modal-btn.secondary { background:var(--field); color:var(--text); border:1px solid var(--border); }
+
   @media (prefers-reduced-motion:reduce) {
     button { transition:none; }
     button:not(:disabled):hover, button:not(:disabled):active { transform:none; }
@@ -246,7 +259,7 @@
   .cue[data-k="LEFT"] .ch { transform:rotate(180deg); }
   .cue[data-k="UP"] .ch { transform:rotate(-90deg); }
   .cue[data-k="DOWN"] .ch { transform:rotate(90deg); }
-  .cue[data-k="BLINK"], .cue[data-k="STRAIGHT"] { left:50%; bottom:52px; transform:translateX(-50%); padding:8px 16px; border-radius:999px; background:rgba(15,23,42,.85); }
+  .cue[data-k="STRAIGHT"] { left:50%; bottom:52px; transform:translateX(-50%); padding:8px 16px; border-radius:999px; background:rgba(15,23,42,.85); }
   .cue .eyes { width:clamp(90px,24vw,130px); height:auto; stroke-width:3; }
   .cue .eyes circle { fill:currentColor; }
   .cue .eye { transform-box:fill-box; transform-origin:center; animation:eyeBlink 1.4s ease-in-out infinite; }
@@ -277,6 +290,7 @@
   .recent-latest { display:inline-block; padding:1px 5px; border-radius:4px; background:var(--accent); color:#fff; font-size:9px; font-weight:800; letter-spacing:.04em; }
   .recent-id { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
   .recent-time { flex:none; text-align:right; font-size:12px; line-height:1.3; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .recent-edit { flex:none; padding:6px 8px; border:1px solid var(--border); border-radius:7px; background:var(--card); color:var(--text); font-size:11px; cursor:pointer; }
   .recent-empty { padding:18px 8px; text-align:center; font-size:14px; color:var(--muted); }
   #recentHome { height:clamp(170px,34dvh,320px); }
   body[data-mode="scan"] #scanPane:has(#identityForm:not([hidden])) { flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
@@ -405,7 +419,7 @@ header,.gps-row{flex:none}
 </style>
 </head>
 <body>
-<header><div class="hleft"><button id="btnBack" class="back" hidden><svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Back</button><h1 id="appTitle">GSDC In &amp; Out</h1></div><div id="clock"></div><div class="hright"><button id="btnTheme" type="button" aria-label="Switch dark / light mode"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2m16 0h2"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5Z"/></svg><span class="theme-thumb"></span></span><span id="themeLabel"></span></button></div></header>
+<header><div class="hleft"><button id="btnBack" class="back" hidden><svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg>Back</button><h1 id="appTitle">GSDC In &amp; Out</h1></div><div id="clock"></div><div class="hright"><button type="button" id="guardToggle" class="guard-toggle" aria-pressed="false">Guard sign in</button><button id="btnTheme" type="button" aria-label="Switch dark / light mode"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2m16 0h2"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 0 1 0 20.5 15.5Z"/></svg><span class="theme-thumb"></span></span><span id="themeLabel"></span></button></div></header>
 
 <div class="gps-row"><div id="gps" class="gps-status" aria-live="polite">GPS: waiting…</div><button type="button" id="retryGPS" aria-label="Retry GPS location" title="Retry GPS location" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></button></div>
 
@@ -462,6 +476,29 @@ header,.gps-row{flex:none}
   </section>
 </main>
 
+  <canvas id="confetti-canvas"></canvas>
+  <div id="appModal" class="modal-overlay" style="display:none;">
+    <div class="modal" id="modalContent">
+      <span class="modal-icon" id="modalIcon">🎉</span>
+      <h2 class="modal-title" id="modalTitle">Success!</h2>
+      <p class="modal-message" id="modalMessage">Congratulations!</p>
+      <button class="modal-btn" id="modalBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- In-page dialog used for the guard PIN and the "change status" confirmation -->
+  <div id="dialogOverlay" class="modal-overlay dialog-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <form class="modal" id="dialogBox" autocomplete="off">
+      <h2 class="modal-title" id="dialogTitle"></h2>
+      <p class="modal-message" id="dialogMessage"></p>
+      <input id="dialogInput" class="modal-input" type="password" autocomplete="off" hidden>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn secondary" id="dialogCancel">Cancel</button>
+        <button type="submit" class="modal-btn" id="dialogOk">OK</button>
+      </div>
+    </form>
+  </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script>
@@ -470,11 +507,14 @@ const $ = id => document.getElementById(id);
 const setGPSStatus = text => { $('gps').textContent = text; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const detOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
-const fastOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+let enrollmentMatcher = null, names = {}, employeeDetails = {}, employeeDescriptors = new Map();
+let cfg = { threshold: 0.5, scanThreshold: 0.55, learnMin: 0.25, learnMax: 0.5 };
+let mode = 'home', busy = false, pos = null, activeScanId = null, guardPin = '';
+let appDataReady = false, homeGPSReady = false, homeGPSBusy = false, lastEmpLoad = 0;
 
-let enrollmentMatcher = null, names = {}, employeeDetails = {}, employeeDescriptors = new Map(), cfg = { threshold: 0.5, scanThreshold: 0.55 };
-let mode = 'home', busy = false, pos = null, activeScanId = null;
-let appDataReady = false, homeGPSReady = false, homeGPSBusy = false;
+const GPS_MAX_AGE = 5 * 60 * 1000;      // a GPS fix from the live watch stays valid this long
+const GUARD_IDLE_MS = 5 * 60 * 1000;    // guard is signed out automatically after this much inactivity
+const RECENT_LIMIT = 20;
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyEMU7ApfZZ_wbZErDLxP29-Kx7ZFoTBH4jQArPb9vyVxoNXtAZuUSsqMn6vTMBOqoq/exec';
 const API_KEY = 'x7Kp29qLmA';
@@ -495,12 +535,20 @@ async function gs(fn, ...args) {
   if (!res.ok) throw new Error(data.message || 'Server error ' + res.status);
   return data;
 }
+
+/* Wakes the Apps Script up (cold starts are the slowest part) before it is needed. */
+let lastPing = 0;
+function warmServer() {
+  if (Date.now() - lastPing < 25000) return;
+  lastPing = Date.now();
+  gs('ping').catch(() => {});
+}
+
 function badge(text, cls) { const b = $('badge'); b.textContent = text; b.className = cls || ''; }
 
 const CHEV = '<svg class="ch" viewBox="0 0 48 48"><path d="M16 8l16 16-16 16"/></svg>'.repeat(3);
 const CUE_HTML = {
   LEFT: CHEV, RIGHT: CHEV, UP: CHEV, DOWN: CHEV,
-  BLINK: '<svg class="eyes" viewBox="0 0 100 40"><g class="eye"><path d="M6 20s9-13 21-13 21 13 21 13-9 13-21 13S6 20 6 20Z"/><circle cx="27" cy="20" r="6"/></g><g class="eye"><path d="M52 20s9-13 21-13 21 13 21 13-9 13-21 13S52 20 52 20Z"/><circle cx="73" cy="20" r="6"/></g></svg>',
   STRAIGHT: '<svg class="ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="3"/><path d="M24 4v6M24 38v6M4 24h6M38 24h6"/></svg>'
 };
 function cue(kind) {
@@ -607,6 +655,40 @@ function showModal(opts) {
   if (opts.type === 'success') { shootConfetti(); }
 }
 
+/* ---------- In-page dialog: replaces prompt() / confirm() ----------
+   Many kiosk / embedded / installed-app browsers silently block prompt() and confirm(),
+   which is why "Guard sign in" appeared to do nothing. */
+let dialogResolve = null;
+function askDialog(o) {
+  return new Promise(resolve => {
+    if (dialogResolve) dialogResolve(null);
+    const input = $('dialogInput');
+    $('dialogTitle').textContent = o.title || '';
+    $('dialogMessage').textContent = o.message || '';
+    $('dialogOk').textContent = o.okText || 'OK';
+    $('dialogCancel').textContent = o.cancelText || 'Cancel';
+    input.hidden = !o.input;
+    input.value = '';
+    input.placeholder = o.placeholder || '';
+    dialogResolve = resolve;
+    $('dialogOverlay').style.display = 'flex';
+    setTimeout(() => (o.input ? input : $('dialogOk')).focus(), 50);
+  });
+}
+function closeDialog(value) {
+  const r = dialogResolve;
+  dialogResolve = null;
+  $('dialogOverlay').style.display = 'none';
+  $('dialogInput').value = '';
+  if (r) r(value);
+}
+$('dialogBox').addEventListener('submit', e => {
+  e.preventDefault();
+  closeDialog($('dialogInput').hidden ? true : $('dialogInput').value);
+});
+$('dialogCancel').onclick = () => closeDialog(null);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && dialogResolve) closeDialog(null); });
+
 function paintThemeBtn() {
   const dark = document.documentElement.dataset.theme === 'dark';
   $('btnTheme').classList.toggle('is-dark', dark);
@@ -623,28 +705,57 @@ paintThemeBtn();
 
 setInterval(() => { $('clock').textContent = new Date().toLocaleTimeString(); }, 1000);
 
+/* ---------- Camera ----------
+   ensureCamera() is shared: it can be started early (while the ID is typed) and the scan simply
+   waits for the same request instead of opening a second one. */
 let stream = null, gpsWatch = null, session = 0;
+let camPromise = null, camGen = 0, prewarmTimer = null, prewarmBlocked = false;
 
-async function startCamera() {
-  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-    throw new Error('Camera API unavailable. Do not open this file directly (file://). Run it via http://localhost or http://127.0.0.1 with a local server, and use Chrome/Edge.');
-  }
-  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-  const v = $('video');
-  v.srcObject = stream;
-  await new Promise(r => { v.onloadedmetadata = r; });
-  await v.play();
+function ensureCamera() {
+  if (stream) return Promise.resolve();
+  if (camPromise) return camPromise;
+  const gen = camGen;
+  const p = (async () => {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      throw new Error('Camera API unavailable. Do not open this file directly (file://). Run it via http://localhost or http://127.0.0.1 with a local server, and use Chrome/Edge.');
+    }
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    if (gen !== camGen) { s.getTracks().forEach(t => t.stop()); throw new Error('Camera closed'); }
+    stream = s;
+    const v = $('video');
+    const loaded = new Promise(r => { v.onloadedmetadata = r; });
+    v.srcObject = s;
+    await loaded;
+    await v.play();
+  })();
+  camPromise = p;
+  p.then(() => {}, () => {}).then(() => { if (camPromise === p) camPromise = null; });
+  return p;
 }
 function stopCamera() {
+  camGen++;
+  clearTimeout(prewarmTimer);
   if (stream) stream.getTracks().forEach(t => t.stop());
   stream = null;
   $('video').srcObject = null;
+}
+/* Opens the camera in the background as soon as the person starts typing their ID,
+   so it is already running when they press Face Scan. */
+function schedulePrewarm() {
+  if (mode !== 'scan' || busy || prewarmBlocked || !$('camPane').hidden) return;
+  ensureCamera().catch(() => { prewarmBlocked = true; });
+  clearTimeout(prewarmTimer);
+  prewarmTimer = setTimeout(() => { if (!busy && $('camPane').hidden) stopCamera(); }, 60000);
 }
 
 async function openModule(m) {
   mode = m;
   document.body.dataset.mode = m;
   const my = ++session;
+  prewarmBlocked = false;
   $('home').hidden = true; $('app').hidden = false; $('btnBack').hidden = false;
   $('appTitle').hidden = true;
   $('scanPane').hidden = m !== 'scan';
@@ -663,6 +774,7 @@ async function openModule(m) {
   if (m === 'enroll') { setNameLock(false); autoFilledId = null; syncKnownEmployee(); }
   say(''); busy = false;
   badge(m === 'scan' ? 'Enter employee ID to begin' : 'Enter employee details to begin');
+  warmServer();
 }
 function goHome() {
   session++; mode = 'home'; busy = false;
@@ -697,7 +809,9 @@ function getGPSForScan() {
     setGPSStatus('GPS unavailable');
     return Promise.reject(new Error('Location is unavailable. Enable GPS/location services to record attendance.'));
   }
-  if (pos && pos.t && Date.now() - pos.t < 15000) return Promise.resolve(pos);
+  // The live watch only reports when the position changes, so a device that sits still keeps its last fix.
+  // Re-using it avoids a slow new GPS request (up to 12 s) every time someone scans.
+  if (pos && pos.t && Date.now() - pos.t < GPS_MAX_AGE) return Promise.resolve(pos);
 
   const once = opts => new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, opts));
   const reason = e => e.code === 1 ? 'Location permission was denied.' :
@@ -754,7 +868,7 @@ const buildFullName = (first, middle, last) => last + ', ' + [first, middle].fil
 async function loadEmployees() {
   const boot = await gs('getBootData');
   if (!boot.employees) throw new Error(boot.message || 'Bad response from server');
-  cfg = Object.assign({ threshold: 0.5, scanThreshold: 0.55 }, boot.config || {});
+  cfg = Object.assign({ threshold: 0.5, scanThreshold: 0.55, learnMin: 0.25, learnMax: 0.5 }, boot.config || {});
   LOCATIONS = boot.locations || [];
   names = {};
   employeeDetails = {};
@@ -773,18 +887,33 @@ async function loadEmployees() {
     }
   });
   if (labeled.length) enrollmentMatcher = new faceapi.FaceMatcher(labeled, cfg.threshold);
+  lastEmpLoad = Date.now();
 }
 
-async function captureAvgDescriptor(my, n = 5) {
+/* Runs the three face models once on blank images so their first real use is not slow
+   (the very first run has to compile the GPU shaders). */
+async function warmUpModels() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 160;
+    const g = c.getContext('2d');
+    g.fillStyle = '#777'; g.fillRect(0, 0, 160, 160);
+    try { await faceapi.detectAllFaces(c, detOpts()); } catch (e) { /* ignore */ }
+    try { await faceapi.nets.faceLandmark68Net.detectLandmarks(c); } catch (e) { /* ignore */ }
+    try { await faceapi.computeFaceDescriptor(c); } catch (e) { /* ignore */ }
+  } catch (e) { console.warn('Model warm-up skipped', e); }
+}
+
+async function captureAvgDescriptor(my, n = 3) {
   const samples = [];
-  for (let i = 0; i < 10 && samples.length < n; i++) {
+  for (let i = 0; i < 8 && samples.length < n; i++) {
     if (my !== session) return null;
     const all = await faceapi.detectAllFaces($('video'), detOpts()).withFaceLandmarks().withFaceDescriptors();
     if (all.length > 1) return null;
     if (all.length === 1) samples.push(all[0].descriptor);
-    await sleep(150);
+    await sleep(40);
   }
-  if (samples.length < 3) return null;
+  if (samples.length < 2) return null;
   const avg = new Float32Array(128);
   samples.forEach(s => s.forEach((v, i) => { avg[i] += v / samples.length; }));
   return avg;
@@ -819,82 +948,21 @@ async function waitFor(test, ms, my, opts) {
   return false;
 }
 
-const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
-let blinker = null;
-async function loadBlinker() {
-  const vision = await import(MP + '/vision_bundle.mjs');
-  const files = await vision.FilesetResolver.forVisionTasks(MP + '/wasm');
-  const make = delegate => vision.FaceLandmarker.createFromOptions(files, {
-    baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-      delegate
-    },
-    runningMode: 'VIDEO', numFaces: 2, outputFaceBlendshapes: true
-  });
-  try { blinker = await make('GPU'); } catch (e) { blinker = await make('CPU'); }
-}
-async function blinkMP(ms, my) {
-  const v = $('video'), end = Date.now() + ms;
-  let closed = false, lost = 0, t = 0;
-  while (Date.now() < end) {
-    if (my !== session) return false;
-    t = Math.max(t + 1, performance.now());
-    const r = blinker.detectForVideo(v, t);
-    const faces = r.faceBlendshapes || [];
-    if (faces.length > 1) { badge('Only one person at a time', 'warn'); return false; }
-    if (faces.length === 1) {
-      lost = 0;
-      const s = n => (faces[0].categories.find(c => c.categoryName === n) || { score: 0 }).score;
-      const shut = Math.min(s('eyeBlinkLeft'), s('eyeBlinkRight'));
-      if (!closed && shut > 0.45) closed = true;
-      else if (closed && shut < 0.3) return true;
-    } else if (++lost > 30) { badge('Face lost', 'warn'); return false; }
-    await sleep(15);
-  }
-  badge('Took too long', 'warn');
-  return false;
-}
-
 async function liveness(my) {
   say('Look straight at the camera'); cue('STRAIGHT');
-  const yaws = [], pitches = [], ears = [];
-  if (!await waitFor(m => { yaws.push(m.yaw); pitches.push(m.pitch); ears.push(m.ear); return yaws.length >= 4; }, 4000, my)) return false;
+  const yaws = [], pitches = [];
+  if (!await waitFor(m => { yaws.push(m.yaw); pitches.push(m.pitch); return yaws.length >= 4; }, 4000, my)) return false;
   const y0 = yaws.sort((a, b) => a - b)[2];
   const pitch0 = pitches.sort((a, b) => a - b)[2];
-  const earOpen = ears.sort((a, b) => a - b)[2];
-
-  const dir = Math.random() < 0.5 ? 'LEFT' : 'RIGHT';
-  const turn = async () => {
-    say('Turn your head to the ' + dir); cue(dir);
-    const ok = await waitFor(m => dir === 'LEFT' ? m.yaw > y0 + 0.15 : m.yaw < y0 - 0.15, 7000, my);
-    if (!ok) return false;
-    say('Now look straight again'); cue('STRAIGHT');
-    return waitFor(m => Math.abs(m.yaw - y0) < 0.07, 5000, my);
+  const direction = ['LEFT', 'RIGHT', 'UP', 'DOWN'][Math.floor(Math.random() * 4)];
+  const instructions = {
+    LEFT: { text: 'Turn your head to the left', test: m => m.yaw > y0 + 0.15 },
+    RIGHT: { text: 'Turn your head to the right', test: m => m.yaw < y0 - 0.15 },
+    UP: { text: 'Tilt your head up', test: m => m.pitch < pitch0 - 0.08 },
+    DOWN: { text: 'Tilt your head down', test: m => m.pitch > pitch0 + 0.08 }
   };
-  const blink = async () => {
-    say('Blink your eyes'); cue('BLINK');
-    if (blinker) return blinkMP(7000, my);
-    let open = earOpen, closed = false;
-    return waitFor(m => {
-      open = Math.max(open * 0.97, m.ear);
-      if (!closed && m.ear < open * 0.8) closed = true;
-      return closed && m.ear > open * 0.9;
-    }, 7000, my, fastOpts());
-  };
-  const tilt = async () => {
-    const direction = Math.random() < 0.5 ? 'UP' : 'DOWN';
-    say('Tilt your head ' + direction.toLowerCase()); cue(direction);
-    const moved = await waitFor(m => direction === 'UP' ? m.pitch < pitch0 - 0.08 : m.pitch > pitch0 + 0.08, 7000, my);
-    if (!moved) return false;
-    say('Now look straight again'); cue('STRAIGHT');
-    return waitFor(m => Math.abs(m.pitch - pitch0) < 0.04, 5000, my);
-  };
-  const steps = [turn, blink, tilt];
-  for (let i = steps.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [steps[i], steps[j]] = [steps[j], steps[i]];
-  }
-  for (const step of steps) if (!await step()) return false;
+  say(instructions[direction].text); cue(direction);
+  if (!await waitFor(instructions[direction].test, 7000, my)) return false;
   say('');
   return true;
 }
@@ -932,6 +1000,8 @@ function showResult(r) {
   }
 }
 
+/* Saves the scan. Uses the already-known GPS fix (no new GPS request) and puts the new entry
+   straight into the recent list from the server reply, so nothing else has to be fetched first. */
 async function submit(id, dist, my, live) {
   try {
     const savingMessage = 'Saving record…';
@@ -939,10 +1009,19 @@ async function submit(id, dist, my, live) {
     say(savingMessage + ' Please wait.', true);
     const location = await getGPSForScan();
     if (my !== session) return false;
-    const r = await gs('recordScan', id,
-      location.lat, location.lng, location.acc, dist,
-      Array.from(live).map(n => Math.round(n * 1e4) / 1e4));
-    return my === session ? showResult(r) : false;
+    // Only send the face sample when the server could actually learn from it (smaller, faster request).
+    const sample = dist >= cfg.learnMin && dist <= cfg.learnMax
+      ? Array.from(live).map(n => Math.round(n * 1e4) / 1e4)
+      : null;
+    const r = await gs('recordScan', id, location.lat, location.lng, location.acc, dist, sample);
+    if (my !== session) return false;
+    if (r && r.ok && r.record) addRecentLocal(r.record);
+    const saved = showResult(r);
+    if (saved) {
+      setTimeout(loadRecent, 2500);
+      if (r.learned) loadEmployees().catch(() => {});
+    }
+    return saved;
   } catch (e) {
     if (my === session) showResult({ ok: false, message: e.message || String(e) });
     return false;
@@ -950,6 +1029,11 @@ async function submit(id, dist, my, live) {
     if (my === session) say('');
   }
 }
+
+const minDistance = (live, id) => {
+  const list = employeeDescriptors.get(id) || [];
+  return list.length ? Math.min(...list.map(d => faceapi.euclideanDistance(live, d))) : undefined;
+};
 
 async function verifyAndSubmit(id, my) {
   badge('Liveness check: ' + names[id]);
@@ -966,10 +1050,15 @@ async function verifyAndSubmit(id, my) {
     showResult({ ok: false, message: 'Could not see a clear face. Show only one face to the camera and try again with this ID.' });
     return false;
   }
-  const list = employeeDescriptors.get(id) || [];
-  const distance = list.length
-    ? Math.min(...list.map(d => faceapi.euclideanDistance(live, d)))
-    : undefined;
+  let distance = minDistance(live, id);
+  // The face list is cached on this device. If it does not match, re-check once against a fresh copy
+  // (the employee may have been re-enrolled on another device).
+  if ((distance === undefined || distance > cfg.scanThreshold) && Date.now() - lastEmpLoad > 120000) {
+    badge('Checking latest face data…');
+    try { await loadEmployees(); } catch (e) { /* use cached data */ }
+    if (my !== session) return false;
+    distance = minDistance(live, id);
+  }
   if (distance === undefined || distance > cfg.scanThreshold) {
     showResult({ ok: false, message: 'Face does not match employee ID ' + id +
       '. No attendance was recorded. (distance ' + (distance !== undefined ? distance.toFixed(2) : 'n/a') +
@@ -983,23 +1072,24 @@ async function runFaceScan(id, my) {
   if (busy || mode !== 'scan' || id !== activeScanId) return;
   busy = true;
   clearNudge();
+  clearTimeout(prewarmTimer);
   let recorded = false;
   $('retryScan').disabled = true;
   $('cancelScan').disabled = true;
   try {
-    badge('Checking location…');
+    // Show the camera at once and start it while the location is being checked (in parallel).
+    $('camPane').hidden = false;
+    badge(stream ? 'Checking location…' : 'Starting camera…');
+    const camReady = ensureCamera();
+    camReady.catch(() => {});
+    warmServer();
     await checkLocation();
     if (my !== session || id !== activeScanId) return;
-    $('camPane').hidden = false;
-    if (!stream) {
-      badge('Starting camera…');
-      await startCamera();
-    }
+    if (!stream) badge('Starting camera…');
+    await camReady;
     if (my !== session || id !== activeScanId) { stopCamera(); return; }
     recorded = await verifyAndSubmit(id, my);
     if (my === session && id === activeScanId && recorded) {
-      loadRecent();
-      loadEmployees().catch(() => {});
       stopCamera();
       $('camPane').hidden = true;
       $('scanActions').hidden = true;
@@ -1038,7 +1128,10 @@ async function runFaceScan(id, my) {
 function updateIdentitySubmit() {
  $('identitySubmit').disabled = !$('identityInput').value.trim();
 }
-$('identityInput').addEventListener('input', updateIdentitySubmit);
+$('identityInput').addEventListener('input', () => {
+  updateIdentitySubmit();
+  if ($('identityInput').value.trim()) { schedulePrewarm(); warmServer(); }
+});
 
 const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC_B', 'SCI_B'];
 (function buildKeypad() {
@@ -1070,6 +1163,8 @@ const ID_PREFIXES = ['GS-', 'GSDC-SD', 'TLSC_B', 'SCI_B'];
   add(ID_PREFIXES[3], 'pre', prefix(ID_PREFIXES[3]));
 })();
 
+const findEmployeeId = typed => Object.keys(names).find(k => k.toLowerCase() === typed.toLowerCase());
+
 $('identityForm').onsubmit = async event => {
   event.preventDefault();
   if (busy || mode !== 'scan') return;
@@ -1083,10 +1178,14 @@ $('identityForm').onsubmit = async event => {
   $('identitySubmit').disabled = true;
   $('identityError').textContent = '';
   try {
-    badge('Looking up employee ID…');
-    await loadEmployees();
-    if (my !== session) return;
-    const id = Object.keys(names).find(employeeId => employeeId.toLowerCase() === submittedId.toLowerCase());
+    // Use the employee list that is already loaded; only download it again if this ID is not in it.
+    let id = findEmployeeId(submittedId);
+    if (!id || !employeeDescriptors.has(id)) {
+      badge('Looking up employee ID…');
+      await loadEmployees();
+      if (my !== session) return;
+      id = findEmployeeId(submittedId);
+    }
     if (!id) {
       $('identityError').textContent = 'Employee ID not found. Check the ID and try again.';
       badge('Enter a valid employee ID', 'warn');
@@ -1213,7 +1312,8 @@ async function startEnroll() {
     }
 
     showEnrollCamera(true);
-    if (!stream) { badge('Starting camera…'); await startCamera(); }
+    if (!stream) badge('Starting camera…');
+    await ensureCamera();
     if (my !== session) { stopCamera(); return; }
 
     msg('Liveness check: follow the instructions on the camera');
@@ -1279,11 +1379,17 @@ $('editEnroll').onclick = () => {
   updateEnrollButton();
 };
 
+/* ---------- Recent entries ---------- */
 let recentKey = '';
+let recentRecords = [];
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function recentRow(r, isLatest) {
   const row = document.createElement('div');
   row.className = 'recent-row';
+  row.dataset.row = r.row;
+  row.dataset.id = r.id;
+  row.dataset.timestamp = r.timestamp;
+  row.dataset.type = r.type;
 
   const tagCol = document.createElement('div');
   tagCol.className = 'recent-tag-col';
@@ -1322,12 +1428,20 @@ function recentRow(r, isLatest) {
   const d = document.createElement('div'); d.textContent = r.date;
   time.append(t, d);
 
-  row.append(tagCol, person, time);
+  const edit = document.createElement('button');
+  edit.type = 'button';
+  edit.className = 'recent-edit';
+  edit.dataset.action = 'toggle-status';
+  edit.textContent = 'Change to ' + (type === 'IN' ? 'OUT' : 'IN');
+  edit.hidden = !guardPin;
+
+  row.append(tagCol, person, time, edit);
   return row;
 }
 
 function renderRecent(records) {
-  const key = JSON.stringify(records);
+  recentRecords = records;
+  const key = JSON.stringify([records, !!guardPin]);
   if (key === recentKey) return;
   recentKey = key;
   document.querySelectorAll('.recent-view').forEach(view => {
@@ -1344,12 +1458,101 @@ function renderRecent(records) {
     records.forEach((r, i) => list.appendChild(recentRow(r, i === 0)));
   });
 }
+/* Puts a just-saved entry at the top of the list without waiting for another server request. */
+function addRecentLocal(rec) {
+  renderRecent([rec].concat(recentRecords.filter(x => x.row !== rec.row)).slice(0, RECENT_LIMIT));
+}
 async function loadRecent() {
   try {
     const r = await gs('getRecent');
     if (r && r.ok && Array.isArray(r.records)) renderRecent(r.records);
   } catch (e) { console.warn('Could not load recent records', e); }
 }
+
+/* ---------- Guard role ----------
+   A guard signs in with the guard PIN and can flip IN <-> OUT on the latest 20 entries.
+   The server re-checks the PIN on every change and refuses entries that are no longer in the latest 20. */
+let guardTimer = null;
+function updateGuardButton() {
+  $('guardToggle').textContent = guardPin ? 'Guard sign out' : 'Guard sign in';
+  $('guardToggle').setAttribute('aria-pressed', guardPin ? 'true' : 'false');
+}
+function guardSignOut() {
+  clearTimeout(guardTimer);
+  guardPin = '';
+  updateGuardButton();
+  renderRecent(recentRecords);
+}
+function touchGuardTimer() {
+  clearTimeout(guardTimer);
+  if (guardPin) guardTimer = setTimeout(guardSignOut, GUARD_IDLE_MS);
+}
+async function changeRecentEntry(row) {
+  if (!guardPin || !row) return;
+  const from = row.dataset.type;
+  const to = from === 'IN' ? 'OUT' : 'IN';
+  const who = (row.querySelector('.recent-name') || {}).textContent || row.dataset.id;
+  const sure = await askDialog({
+    title: 'Change status',
+    message: 'Change ' + who + ' from ' + from + ' to ' + to + '?',
+    okText: 'Change to ' + to
+  });
+  if (!sure || !guardPin) return;
+  const rowNumber = Number(row.dataset.row);
+  const button = row.querySelector('.recent-edit');
+  if (button) button.disabled = true;
+  try {
+    const result = await gs('changeRecentStatus', guardPin, row.dataset.row,
+      row.dataset.id, row.dataset.timestamp, from, to);
+    if (!result.ok) {
+      if (result.message && result.message.toLowerCase().includes('authorization')) guardSignOut();
+      showModal({ type: 'warning', icon: '⚠️', title: 'Status Not Changed', message: result.message || 'Could not change the attendance status.' });
+      loadRecent();
+    } else {
+      touchGuardTimer();
+      renderRecent(recentRecords.map(r => r.row === rowNumber ? Object.assign({}, r, { type: to }) : r));
+      loadRecent();
+    }
+  } catch (e) {
+    console.error('Could not change recent attendance status', e);
+    showModal({ type: 'warning', icon: '⚠️', title: 'Status Not Changed', message: e.message || String(e) });
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+$('guardToggle').onclick = async () => {
+  if (guardPin) { guardSignOut(); return; }
+  const entered = await askDialog({
+    title: 'Guard sign in',
+    message: 'Enter the guard PIN to change IN / OUT on recent entries.',
+    input: true,
+    placeholder: 'Guard PIN',
+    okText: 'Sign in'
+  });
+  const pin = entered === null || entered === true ? '' : String(entered).trim();
+  if (!pin) return;
+  const button = $('guardToggle');
+  button.disabled = true;
+  button.textContent = 'Checking…';
+  try {
+    const result = await gs('verifyGuardPin', pin);
+    if (!result.ok) {
+      showModal({ type: 'warning', icon: '⚠️', title: 'Guard Sign-In Failed', message: result.message || 'Guard sign-in failed.' });
+      return;
+    }
+    guardPin = pin;
+    touchGuardTimer();
+    renderRecent(recentRecords);
+  } catch (e) {
+    console.error('Could not verify guard PIN', e);
+    showModal({ type: 'warning', icon: '⚠️', title: 'Guard Sign-In Failed', message: e.message || String(e) });
+  } finally {
+    button.disabled = false;
+    updateGuardButton();
+  }
+};
+updateGuardButton();
+
 function recentTick() {
   document.querySelectorAll('.recent-view').forEach(v => {
     const n = Number(v.dataset.n || 0);
@@ -1377,13 +1580,21 @@ document.querySelectorAll('.recent-view').forEach(v => {
   ['pointerdown', 'touchstart'].forEach(ev => v.addEventListener(ev, pause, { passive: true }));
   ['pointerup', 'touchend'].forEach(ev => v.addEventListener(ev, resume, { passive: true }));
   v.addEventListener('wheel', () => { pause(); resume(); }, { passive: true });
+  v.addEventListener('click', event => {
+    const target = event.target;
+    const button = target && target.closest
+      ? target.closest('.recent-edit[data-action="toggle-status"]')
+      : null;
+    if (button && guardPin) changeRecentEntry(button.closest('.recent-row'));
+  });
 });
 requestAnimationFrame(recentTick);
 setInterval(() => { if (!document.hidden && !busy && (mode === 'home' || mode === 'scan')) loadRecent(); }, 20000);
+// Keep the cached employee / face list fresh while the device sits on the home screen.
+setInterval(() => { if (!document.hidden && !busy && mode === 'home' && appDataReady) loadEmployees().catch(() => {}); }, 10 * 60 * 1000);
 
 (async function init() {
   updateHomeActions();
-  loadBlinker().catch(e => console.warn('MediaPipe blink detector unavailable, using fallback', e));
   startGPS();
   try {
     setHomeStatus('Loading face models…', true);
@@ -1397,6 +1608,8 @@ setInterval(() => { if (!document.hidden && !busy && (mode === 'home' || mode ==
     loadRecent();
     appDataReady = true;
     updateHomeActions();
+    warmUpModels();
+    warmServer();
     await requestHomeGPS();
     updateHomeActions();
   } catch (e) {
@@ -1415,14 +1628,5 @@ function clearNudge() {
   });
 }
 </script>
-  <canvas id="confetti-canvas"></canvas>
-  <div id="appModal" class="modal-overlay" style="display:none;">
-    <div class="modal" id="modalContent">
-      <span class="modal-icon" id="modalIcon">🎉</span>
-      <h2 class="modal-title" id="modalTitle">Success!</h2>
-      <p class="modal-message" id="modalMessage">Congratulations!</p>
-      <button class="modal-btn" id="modalBtn">OK</button>
-    </div>
-  </div>
 </body>
 </html>
